@@ -1,0 +1,1 @@
+{% load ui %}{% for a in L.add %}{% if a.url %}<a class="ab {{ a.cls }}" href="{{ a.url }}">{% icon a.icon %}<span>{{ a.label }}</span></a>{% else %}<button type="button" class="ab {{ a.cls }}" data-post="{{ a.post }}">{% icon a.icon %}<span>{{ a.label }}</span></button>{% endif %}{% endfor %}

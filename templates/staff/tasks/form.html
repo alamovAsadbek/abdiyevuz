@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Vazifa qo‘shish{% endblock %}{% block h1 %}Vazifa qo‘shish{% endblock %}
+{% block content %}<div class="c p"><form method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fgrid">
+{% if lesson_options %}<div class="f" style="grid-column:1/-1"><span>Dars</span>{% include "partials/select.html" with name="lesson" options=lesson_options value="" %}</div>{% else %}<div class="m" style="grid-column:1/-1">Dars: <b>{{ lesson.title }}</b></div>{% endif %}
+{% include "partials/f.html" with label="Vazifa nomi" name="title" ph="Masalan: 1-mashq: reaksiyalarni tenglang" wide=1 req=1 %}
+{% include "partials/f.html" with label="Tavsif" name="description" type="textarea" ph="Vazifa shartlari" wide=1 %}
+{% include "partials/f.html" with label="Eng yuqori ball" name="max_score" type="number" v="10" ph="10" min0=1 %}
+{% include "partials/f.html" with label="Topshirish muddati (muddat tugagach yuklash avtomatik yopiladi)" name="deadline" type="datetime-local" ph="Muddatni tanlang" %}
+<label class="f" style="grid-column:1/-1"><span>Vazifa fayllari (PDF, rasm)</span><input type="file" name="files" multiple placeholder="Fayllarni tanlang"></label></div>
+<button class="bt mt">{% icon 'save' %} Qo‘shish</button></form></div>{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Qo‘llanma qo‘shish{% endblock %}{% block h1 %}Qo‘llanma qo‘shish{% endblock %}
+{% block content %}<div class="c p"><form method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Nomi" name="title" ph="Masalan: Mavzu konspekti (PDF)" wide=1 req=1 %}
+{% include "partials/f.html" with label="Havola (ixtiyoriy)" name="url" ph="https://..." wide=1 %}
+<label class="f" style="grid-column:1/-1"><span>Yoki fayl (PDF, rasm, Word)</span><input type="file" name="file" placeholder="Fayl tanlang"></label></div>
+<div class="warn">{% icon 'shield' %}<span>Talabalar faylni faqat saytda ko‘ra oladi — yuklab olish yoki nusxalash imkoni yo‘q.</span></div>
+<button class="bt mt">{% icon 'save' %} Qo‘shish</button></form></div>{% endblock %}

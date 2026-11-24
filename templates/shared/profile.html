@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Profil{% endblock %}{% block back %}{% endblock %}{% block h1 %}Profil{% endblock %}
+{% block content %}
+<div class="gr g2 a">
+<div class="c p"><div class="row" style="gap:16px"><div class="av" style="width:64px;height:64px;font-size:22px">{{ request.user.initials }}</div><div class="sp"><h2>{{ request.user.full_name }}</h2><div class="m">{{ request.user.get_role_display }}</div></div></div>
+<div class="row mt">{% tag request.user.uid %} {% if request.user.is_student %}{% tag request.user.points|stringformat:'s'|add:' ball' 'f' %}{% endif %}</div>
+<p class="m mt">@{{ request.user.username }}{% if request.user.phone %} · {{ request.user.phone }}{% endif %}</p></div>
+<div class="c p"><h3 style="margin-bottom:12px">Ma’lumotlarni tahrirlash</h3>
+<form method="post">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Ism familiya" name="full_name" v=request.user.full_name ph="Ism familiyangiz" wide=1 req=1 %}
+{% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=request.user.username ph="Lotin harf va raqam" req=1 %}
+{% include "partials/f.html" with label="Telefon" name="phone" v=request.user.phone ph="+998 90 123 45 67" phone=1 %}
+{% include "partials/f.html" with label="Joriy parol" name="p0" type="password" ph="Parolni o‘zgartirish uchun" ac="current-password" %}
+{% include "partials/f.html" with label="Yangi parol" name="p1" type="password" ph="Kamida 6 ta belgi" ac="new-password" %}
+{% include "partials/f.html" with label="Yangi parolni takrorlang" name="p2" type="password" ph="Yangi parolni qayta kiriting" ac="new-password" %}
+</div><button class="bt mt">{% icon 'save' %} Saqlash</button></form></div></div>
+<div class="c p mt"><button class="bt d" data-confirm="Tizimdan chiqmoqchimisiz?" data-post="{% url 'logout' %}">{% icon 'log-out' %} Chiqish</button></div>
+{% endblock %}

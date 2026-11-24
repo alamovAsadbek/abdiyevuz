@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Xabarnoma{% endblock %}{% block h1 %}{% if m %}Xabarnomani tahrirlash{% else %}Xabarnoma yuborish{% endif %}{% endblock %}
+{% block content %}
+{% if types %}<script type="application/json" id="groups-json">{{ groups_json|safe }}</script><script type="application/json" id="users-json">{{ users_json|safe }}</script>{% endif %}
+<div class="c p"><form method="post" data-msg-form>{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Sarlavha" name="title" v=m.title ph="Masalan: Dars jadvali o‘zgardi" wide=1 req=1 %}
+{% include "partials/f.html" with label="Qisqa tavsif" name="short" v=m.short ph="Bir jumlalik qisqa mazmun" wide=1 %}
+{% if types %}
+<div class="f" style="grid-column:1/-1"><span>Kimga yuboriladi</span>
+<div class="cs" data-aud><input type="hidden" name="audience" value="{% if pre %}users{% else %}{{ types.0.0 }}{% endif %}"><button type="button" class="cb"><span>{% if pre %}Tanlangan foydalanuvchilar{% else %}{{ types.0.1 }}{% endif %}</span>{% icon 'chevron-down' %}</button><div class="cl">{% for k, n in types %}<div class="co {% if forloop.first and not pre or pre and k == 'users' %}on{% endif %}" data-v="{{ k }}">{{ n }}</div>{% endfor %}</div></div></div>
+<div data-aud-pick="group" class="hide" style="grid-column:1/-1"><button type="button" class="bt s" data-pick-into data-field="groups" data-src="groups-json" data-title="Guruhlarni tanlang" data-tags="gtags">{% icon 'layers' %} Guruhlarni tanlash</button> <span id="gtags"></span></div>
+<div data-aud-pick="users" class="hide" style="grid-column:1/-1"><button type="button" class="bt s" data-pick-into data-field="users" data-src="users-json" data-title="Foydalanuvchilarni tanlang" data-tags="utags">{% icon 'users' %} Foydalanuvchilarni tanlash</button> <span id="utags"></span>{% if pre %}<input type="hidden" name="users" value="{{ pre }}">{% endif %}</div>
+<div class="m" id="mcnt" style="grid-column:1/-1"></div>
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Kanal</div>{% include "partials/seg.html" with name="channel" options=channel_opts value="app" %}</div>
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Muhimlik</div>{% include "partials/seg.html" with name="priority" options=prio_opts value="normal" %}</div>
+{% endif %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Xabar matni</div><div data-editor="Xabar matnini yozing…" data-name="body"{% if m %} data-init="{{ body_json }}"{% endif %}></div></div></div>
+<button class="bt mt">{% icon 'send' %} {% if m %}Saqlash{% else %}Yuborish{% endif %}</button></form></div>
+{% endblock %}

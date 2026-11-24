@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Panel{% endblock %}{% block back %}{% endblock %}{% block h1 %}Panel{% endblock %}
+{% block content %}
+<div class="hero"><div class="m2">Xush kelibsiz</div><h2>Salom, {{ request.user.full_name|truncatewords:1 }}!</h2><p>Bugun ham yangi bilimlar sari bir qadam tashlaymiz.</p>
+<div class="row mt">{% if cont %}<a class="bt w" href="{% url 'lesson_detail' cont.p.lesson_id %}">{% icon 'play' %} Davom etish: {{ cont.p.lesson.title }}</a>{% else %}<a class="bt w" href="{% url 'courses' %}">{% icon 'play-circle' %} Kurslarni ko‘rish</a>{% endif %}</div>
+<div class="orb"><i style="--r:0deg"></i><i style="--r:60deg"></i><i style="--r:120deg"></i></div></div>
+{% include "partials/meet_widget.html" %}
+<div class="gr g4 a mt">
+{% include "partials/stat.html" with i="award" l="Mening ballarim" n=request.user.points c="p1" %}
+{% include "partials/stat.html" with i="check-circle" l="Ko‘rilgan darslar" n=n_done c="p2" %}
+{% include "partials/stat.html" with i="play-circle" l="Kurslarim" n=n_courses c="p3" %}
+{% include "partials/stat.html" with i="check-square" l="Test urinishlari" n=n_att c="p4" %}</div>
+<div class="gr g2e a mt"><div class="c p"><h3>Kurs bo‘yicha jarayon</h3><div class="row" style="gap:20px">{{ beaker }}<div><b style="font-size:28px">{{ beaker_pct }}%</b><div class="m">{% if cont %}{{ cont.course.title }}{% else %}Hali boshlanmagan{% endif %}</div></div></div></div>
+<div class="c p"><h3>Test natijalari (o‘rtacha {{ avg }}%)</h3>{{ ph }}</div></div>
+<div class="c p mt"><h3>Mavzular bo‘yicha o‘zlashtirish</h3>{{ tiles }}</div>
+{% if group_lessons %}<h3 style="margin:20px 0 12px">Guruh videodarslari</h3><div class="gr a">{% for r in group_lessons %}<a class="c pc p2 hv {% if r.lock %}lk{% endif %}" {% if r.lock %}data-toast="{{ r.lock }}"{% else %}href="{% url 'lesson_detail' r.l.pk %}"{% endif %} style="color:inherit;text-decoration:none"><div class="row"><span class="ic">{% icon 'video' %}</span><span class="sp"></span>{% tag r.g.name %}</div><h3 style="margin-top:10px">{{ r.l.title }}</h3><div class="m">{{ r.l.created|dfmt }}</div></a>{% endfor %}</div>{% endif %}
+<h3 style="margin:20px 0 12px">Topshirilishi kerak vazifalar</h3>
+{% for t in tasks %}<a class="ls hv" href="{% url 'lesson_detail' t.lesson_id %}?tab=task" style="color:inherit;text-decoration:none"><span class="ic" style="background:var(--p2)">{% icon 'clipboard' %}</span><span class="sp"><b>{{ t.title }}</b><div class="m">{{ t.lesson.title }}{% if t.deadline %} · muddat: {{ t.deadline|dtm }}{% endif %}</div></span></a>{% empty %}<div class="c p m">Hozircha topshiriladigan vazifa yo‘q</div>{% endfor %}
+{% endblock %}

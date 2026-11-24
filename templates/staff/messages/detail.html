@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ m.title }}{% endblock %}{% block h1 %}{{ m.title }}{% endblock %}
+{% block actions %}<a class="ab" href="{% url 'message_edit' m.pk %}">{% icon 'edit-2' %}<span>Tahrirlash</span></a><button class="ab s" data-post="{% url 'message_resend' m.pk %}">{% icon 'refresh-cw' %}<span>Xatoliklarni qayta yuborish</span></button><button class="ab x" data-post="{% url 'message_delete' m.pk %}" data-confirm="Xabarnoma o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endblock %}
+{% block content %}
+<div class="gr g4 a">{% include "partials/stat.html" with i="users" l="Qabul qiluvchilar" n=s.n c="p1" %}{% include "partials/stat.html" with i="check-circle" l="Yetkazildi" n=s.ok c="p2" %}{% include "partials/stat.html" with i="alert-circle" l="Xatolik" n=s.bad c="p3" %}{% include "partials/stat.html" with i="eye" l="O‘qildi" n=s.rd c="p4" %}</div>
+<div class="row mt">{% tag aud %}{% tag ch %}{% if m.important %}{% tag 'Muhim' 'x' %}{% endif %}</div>
+<div class="mt">{% include "partials/tabs.html" %}</div>
+{% if tab == "body" %}<div class="c p">{{ m.body|safe }}</div>
+{% else %}<div class="c tw"><table><tr><th>Foydalanuvchi</th><th>Kanal</th><th>Holat</th><th>O‘qildi</th></tr>{% for d in rows %}<tr><td>{{ d.user.full_name }}</td><td>{{ d.channel }}</td><td>{% if d.ok %}{% tag 'Yetkazildi' 'f' %}{% else %}{% tag d.reason 'x' %}{% endif %}</td><td>{% if d.is_read %}{% tag 'Ha' 'f' %}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="m">Ma’lumot yo‘q</td></tr>{% endfor %}</table></div>{% endif %}
+{% endblock %}

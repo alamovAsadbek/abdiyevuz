@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Modul{% endblock %}{% block h1 %}{% if m %}Modulni tahrirlash{% else %}Yangi modul{% endif %}{% endblock %}
+{% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Modul nomi" name="title" v=m.title ph="Masalan: Organik kimyo" wide=1 req=1 %}
+{% include "partials/f.html" with label="Tavsif" name="description" v=m.description type="textarea" ph="Modul haqida" wide=1 %}
+{% include "partials/f.html" with label="Narxi (0 = bepul)" name="price" type="number" v=m.price|default:0 ph="0" min0=1 %}
+{% include "partials/check.html" with name="is_active" on=active title="Aktiv modul" %}</div>
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endblock %}

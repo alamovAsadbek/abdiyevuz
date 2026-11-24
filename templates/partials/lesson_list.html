@@ -1,0 +1,4 @@
+{% load ui %}{% for r in rows %}<div class="ls hv {% if r.lock %}lk{% endif %}" {% if r.lock %}data-toast="{{ r.lock }}"{% else %}data-href="{% url 'lesson_detail' r.l.pk %}"{% endif %}>
+<span class="no">{{ forloop.counter }}</span><span class="ic" style="background:var(--p2)">{% if r.lock %}{% icon 'lock' %}{% else %}{% icon 'play-circle' %}{% endif %}</span>
+<span class="sp"><b>{{ r.l.title }}</b><div class="m">{% if r.lock %}{{ r.lock }}{% else %}{{ r.l.get_video_kind_display }}{% if r.ntasks %} · {{ r.ntasks }} ta vazifa{% endif %}{% if r.seen_n %} · {{ r.seen_n }} talaba ko‘rgan{% endif %}{% endif %}</div></span>
+{% if r.done %}{% tag 'Bajarildi' 'f' %}{% endif %}{% if r.l.hls_status == 'processing' %}{% tag 'Video tayyorlanmoqda' %}{% endif %}</div>{% empty %}<div class="c p m">Bu yerda hali dars yo‘q</div>{% endfor %}

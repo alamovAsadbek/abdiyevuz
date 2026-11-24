@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Natija{% endblock %}{% block h1 %}{{ t.title }} — natija{% endblock %}
+{% block actions %}{% if can_retry %}<a class="ab" href="{% url 'test_run' t.pk %}">{% icon 'refresh-cw' %}<span>Qayta ishlash</span></a>{% endif %}{% endblock %}
+{% block content %}
+<div class="c p" style="margin-bottom:14px"><div class="row" style="gap:20px"><div class="sp"><h2>{{ a.score }} / {{ a.total }}</h2><div class="m">{{ a.user.full_name }} · {{ a.created|dtm }}</div></div>{% tag a.percent|stringformat:'s'|add:'%' a.percent|yesno:"f,x" %}</div></div>
+{% for r in rows %}<div class="c p" style="margin-bottom:12px"><div class="row"><span class="no">{{ forloop.counter }}</span>{% if r.ans == r.q.correct %}{% tag 'To‘g‘ri' 'f' %}{% elif r.ans < 0 %}{% tag 'Javob berilmagan' 'x' %}{% else %}{% tag 'Noto‘g‘ri' 'x' %}{% endif %}</div>
+{% if t.mode == "manual" %}<div class="mt">{{ r.q.text|safe }}</div>{% for o in r.q.options %}<div class="op {% if forloop.counter0 == r.q.correct %}ok{% elif forloop.counter0 == r.ans %}no{% endif %}"><b>{{ forloop.counter0|letter }}.</b> <span>{{ o|safe }}</span></div>{% endfor %}
+{% else %}<div class="row mt"><span class="m">Sizning javobingiz:</span><b>{% if r.ans >= 0 %}{{ r.ans|letter }}{% else %}—{% endif %}</b><span class="m">To‘g‘ri:</span><b>{{ r.q.correct|letter }}</b></div>{% endif %}
+{% if r.q.solution %}<div class="sol">{{ r.q.solution|safe }}</div>{% endif %}{% if r.q.solution_image %}<div class="mt"><button class="bt s" data-fview data-kind="sol" data-pk="{{ r.q.pk }}" data-name="Yechim">{% icon 'image' %} Yechim rasmi</button></div>{% endif %}</div>{% endfor %}
+{% endblock %}

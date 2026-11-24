@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Natija{% endblock %}{% block h1 %}{{ t.title }} — natija{% endblock %}
+{% block content %}<div class="c p" style="max-width:520px;margin:20px auto;text-align:center"><h2>{{ sc }} / {{ total }}</h2><p class="m" style="margin:8px 0 16px">To‘g‘ri javoblar · {{ pct }}%</p>
+{% if guest %}<div class="warn">{% icon 'info' %}<span>Siz tizimga kirmagansiz — natija saqlanmaydi. Ro‘yxatdan o‘tsangiz natijalaringiz saqlanadi.</span></div><div class="row mt" style="justify-content:center"><a class="bt" href="{% url 'register' %}">Ro‘yxatdan o‘tish</a><a class="bt s" href="{% url 'tests' %}">Testlar</a></div>
+{% else %}<div class="warn">{% icon 'info' %}<span>O‘qituvchi sifatida ishlagan test natijasi saqlanmaydi.</span></div><a class="bt mt" href="{% url 'test_detail' t.pk %}">Testga qaytish</a>{% endif %}</div>{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ g.name }}{% endblock %}{% block h1 %}{{ g.name }}{% endblock %}
+{% block content %}<div class="row" style="margin-bottom:14px">{% tag g.kind_label %}<span class="m">{{ g.description }}</span></div>
+{% for r in lessons %}<div class="ls hv {% if r.lock %}lk{% endif %}" {% if r.lock %}data-toast="{{ r.lock }}"{% else %}data-href="{% url 'lesson_detail' r.l.pk %}"{% endif %}><span class="ic" style="background:var(--p2)">{% if r.lock %}{% icon 'lock' %}{% else %}{% icon 'play-circle' %}{% endif %}</span><span class="sp"><b>{{ r.l.title }}</b><div class="m">{{ r.l.created|dfmt }}{% if r.lock %} · {{ r.lock }}{% endif %}</div></span>{% if r.done %}{% tag 'Bajarildi' 'f' %}{% elif r.seen %}{% tag 'Ko‘rilgan' %}{% endif %}</div>{% empty %}<div class="c p m">Hali videodars yo‘q</div>{% endfor %}{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Jurnal #{{ r.pk }}{% endblock %}{% block h1 %}Jurnal yozuvi #{{ r.pk }}{% endblock %}
+{% block content %}
+<section class="inch sev-{% if r.result == 'ok' %}low{% else %}high{% endif %}">
+  <span class="inci">{% icon 'terminal' %}</span>
+  <div class="sp"><div class="row" style="justify-content:flex-start;gap:6px">{% tag r.cat_label %}{% tag r.result_tag.0 r.result_tag.1 %}</div><h2>{{ r.label }}</h2>{% if r.message %}<p class="m">{{ r.message }}</p>{% endif %}</div>
+  <div class="inct"><div class="m">Vaqt</div><b>{{ r.created|dtm }}</b></div>
+</section>
+<div class="gr g2 a">
+  <div class="c p"><h3 style="margin-bottom:12px">{% icon 'file-text' %} Tafsilotlar</h3>
+    <div class="kv">
+      <div><span>Kim</span><b>{% if r.actor and request.user|can_view:'users' and not r.actor.is_main %}<a href="{% url 'user_detail' r.actor.pk %}">{{ r.actor_name }}</a>{% else %}{{ r.actor_name }}{% endif %} · {{ role }}</b></div>
+      <div><span>Amal kodi</span><b class="mono">{{ r.action }}</b></div>
+      <div><span>Obyekt</span><b>{% if r.obj_type %}{{ r.obj_type }}: {% endif %}{{ r.obj_label|default:r.obj_id|default:"—" }}</b></div>
+      <div><span>Kim haqida</span><b>{{ r.target_user.full_name|default:"—" }}</b></div>
+      <div><span>So‘rov</span><b class="mono">{{ r.method }} {{ r.path }}</b></div>
+      <div><span>Javob kodi</span><b class="mono">{{ r.status|default:"—" }}{% if r.duration_ms %} · {{ r.duration_ms }} ms{% endif %}</b></div>
+      <div><span>IP manzil</span><b class="mono">{{ r.ip|default:"—" }}</b></div>
+      <div><span>Qurilma</span><b>{{ r.device|default:"—" }}</b></div>
+      <div><span>User-Agent</span><b class="mono" style="font-size:11.5px">{{ r.user_agent|default:"—" }}</b></div>
+    </div>
+    {% if data %}<h3 style="margin:16px 0 8px">Yuborilgan ma’lumot</h3><pre class="code">{{ data }}</pre>{% endif %}
+  </div>
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'clock' %} Shu foydalanuvchining ±30 daqiqadagi amallari</h3>
+  {% for l in near %}<a class="ls hv" href="{% url 'log_detail' l.pk %}"><span class="sp"><b>{{ l.label }}</b><div class="m">{{ l.created|dtm }}{% if l.obj_label %} · {{ l.obj_label }}{% endif %}</div></span>{% tag l.result_tag.0 l.result_tag.1 %}</a>{% empty %}<div class="m">Boshqa amal yo‘q</div>{% endfor %}</div>
+</div>
+{% endblock %}

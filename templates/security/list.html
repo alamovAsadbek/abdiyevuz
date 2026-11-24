@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Xavfsizlik hodisalari{% endblock %}{% block back %}{% endblock %}{% block h1 %}Xavfsizlik hodisalari{% endblock %}
+{% block actions %}{% if request.user.is_main %}<a class="ab s" href="{% url 'settings' %}?tab=protect">{% icon 'sliders' %}<span>Himoya sozlamalari</span></a>{% endif %}<a class="ab s" href="{% url 'logs' %}">{% icon 'terminal' %}<span>Tizim jurnali</span></a>{% endblock %}
+{% block content %}
+<div class="sech">
+  <div class="sechb"><span class="seci">{% icon 'shield' %}</span><div><h2>Ma’lumot o‘g‘irlanishini kuzatish</h2>
+  <p>Talabalar skrinshot olsa, ekranni yozib olishga, sahifani saqlash yoki chop etishga, DevTools ochishga urinsa — shu yerda qayd etiladi va sizga darhol xabar keladi. Har bir sahifada foydalanuvchi ismi va ID suv belgisi turadi.</p></div></div>
+</div>
+<div class="gr g4 a">
+{% include "partials/stat.html" with i="alert-octagon" l="Ko‘rilmagan yuqori xavf" n=st.high c="p3" %}
+{% include "partials/stat.html" with i="inbox" l="Ko‘rilmagan hammasi" n=st.open c="p1" %}
+{% include "partials/stat.html" with i="calendar" l="Bugun" n=st.today c="p2" %}
+{% include "partials/stat.html" with i="users" l="30 kunda foydalanuvchilar" n=st.users c="p4" %}</div>
+<div class="gr g2e a mt">
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'user-x' %} Eng ko‘p urinish qilganlar (30 kun)</h3>
+  {% for t in top %}<a class="ls hv" href="?uid={{ t.user }}"><span class="no">{{ forloop.counter }}</span><div class="av">{{ t.user__full_name|initials }}</div><span class="sp"><b>{{ t.user__full_name }}</b><div class="m">{{ t.user__uid }}</div></span>{% tag t.n|stringformat:'s'|add:' hodisa' 'x' %}</a>{% empty %}<div class="m">Hodisa yo‘q — ajoyib!</div>{% endfor %}</div>
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'pie-chart' %} Hodisa turlari (30 kun)</h3>
+  {% for k, n, w in by_kind %}<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><span>{{ k }}</span><b>{{ n }}</b></div><div class="bar0"><i style="width:{{ w }}%"></i></div></div>{% empty %}<div class="m">Ma’lumot yo‘q</div>{% endfor %}</div>
+</div>
+{% if filt_user %}<div class="c p mt row"><span class="ic" style="background:var(--p2)">{% icon 'filter' %}</span><span class="sp">Faqat <b>{{ filt_user.full_name }}</b> ({{ filt_user.uid }}) hodisalari</span><a class="bt s" href="{% url 'security' %}">{% icon 'x' %} Filtrni olib tashlash</a></div>{% endif %}
+<div class="mt">{% include "partials/list.html" %}</div>
+{% endblock %}

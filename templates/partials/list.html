@@ -1,0 +1,19 @@
+{% load ui %}<div class="row" style="margin-bottom:14px;gap:10px">
+{% if L.search %}<div class="sr"><input data-search value="{{ L.q }}" placeholder="Qidirish…"><span>{% icon 'search' %}</span></div>{% endif %}
+{% for f in L.filters %}<div style="min-width:170px"><div class="cs" data-nav="f_{{ f.key }}"><input type="hidden" value="{{ f.value }}"><button type="button" class="cb"><span>{{ f.current }}</span>{% icon 'chevron-down' %}</button><div class="cl"><div class="co {% if not f.value %}on{% endif %}" data-v="">{{ f.label }}: hammasi</div>{% for o in f.options %}<div class="co {% if o == f.value %}on{% endif %}" data-v="{{ o }}">{{ o }}</div>{% endfor %}</div></div></div>{% endfor %}
+<div class="sp"></div>
+{% if L.show_mode %}<div class="tabs c" style="margin:0"><a data-mode="cards" class="{% if L.mode == 'cards' %}on{% endif %}" href="{{ L.mbase }}mode=cards">{% icon 'grid' %}</a><a data-mode="table" class="{% if L.mode == 'table' %}on{% endif %}" href="{{ L.mbase }}mode=table">{% icon 'list' %}</a></div>{% endif %}
+</div>
+{% if not L.rows %}<div class="c p m" style="text-align:center">Hech narsa topilmadi</div>
+{% elif L.mode == "cards" %}<div class="gr a">{% for r in L.rows %}
+<div class="c p hv" {% if r.url %}data-href="{{ r.url }}"{% endif %}><div class="row"><span class="no">{{ L.offset|add:forloop.counter }}</span>{% if r.avatar %}<div class="av">{{ r.title|initials }}</div>{% endif %}<div class="sp"><b>{{ r.title }}</b><div class="m">{{ r.sub }}</div></div></div>
+<div class="mt">{% for t in r.tags %}{% tag t.tag t.cls %} {% endfor %}</div>
+{% for c in r.cells|slice:"1:" %}<div class="row" style="justify-content:space-between;margin-top:6px"><span class="m">{{ L.headers|index:forloop.counter }}</span><span>{% cell c %}</span></div>{% endfor %}
+{% if r.actions %}<div class="mt">{% include "partials/row_actions.html" %}</div>{% endif %}</div>{% endfor %}</div>
+{% else %}<div class="c tw"><table><tr><th>№</th>{% for h in L.headers %}<th>{{ h }}</th>{% endfor %}{% if L.has_actions %}<th>Amallar</th>{% endif %}</tr>
+{% for r in L.rows %}<tr class="k" {% if r.url %}data-href="{{ r.url }}"{% endif %}><td><span class="no">{{ L.offset|add:forloop.counter }}</span></td>{% for c in r.cells %}<td>{% cell c %}</td>{% endfor %}{% if L.has_actions %}<td>{% if r.actions %}{% include "partials/row_actions.html" %}{% endif %}</td>{% endif %}</tr>{% endfor %}</table></div>{% endif %}
+{% if L.total > 10 %}<div class="pgr c"><span class="m">{{ L.page.start_index }}–{{ L.page.end_index }} / {{ L.total }} ta</span><div class="sp"></div>
+<div class="cs" data-ps="1"><input type="hidden" value="{{ L.ps }}"><button type="button" class="cb"><span>{{ L.ps }} ta</span>{% icon 'chevron-down' %}</button><div class="cl">{% for n in L.ps_opts %}<div class="co {% if n == L.ps %}on{% endif %}" data-v="{{ n }}">{{ n }} ta</div>{% endfor %}</div></div>
+<div class="pn">{% if L.page.has_previous %}<a class="pb" href="{{ L.base }}page={{ L.page.previous_page_number }}">{% icon 'chevron-left' %}</a>{% else %}<button class="pb" disabled>{% icon 'chevron-left' %}</button>{% endif %}
+{% for p in L.pages %}{% if p.gap %}<span class="m">…</span>{% else %}<a class="pb {% if p.on %}on{% endif %}" href="{{ L.base }}page={{ p.n }}">{{ p.n }}</a>{% endif %}{% endfor %}
+{% if L.page.has_next %}<a class="pb" href="{{ L.base }}page={{ L.page.next_page_number }}">{% icon 'chevron-right' %}</a>{% else %}<button class="pb" disabled>{% icon 'chevron-right' %}</button>{% endif %}</div></div>{% endif %}

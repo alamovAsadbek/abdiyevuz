@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Yangi guruh{% endblock %}{% block h1 %}Yangi guruh{% endblock %}
+{% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Guruh nomi" name="name" ph="Masalan: Kimyo-11 (ertalabki)" wide=1 req=1 %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Turi</div>{% include "partials/seg.html" with name="kind" options=kinds value="online" %}</div>
+{% include "partials/f.html" with label="Tavsif / dars jadvali" name="description" type="textarea" ph="Dars kunlari, vaqti va izohlar" wide=1 %}
+{% include "partials/check.html" with name="is_active" on=1 title="Aktiv guruh" desc="Noaktiv guruh talabalarga ko‘rinmaydi" %}
+</div><button class="bt mt">{% icon 'save' %} Yaratish</button></form></div>{% endblock %}

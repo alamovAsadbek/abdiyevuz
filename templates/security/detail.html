@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Hodisa #{{ r.pk }}{% endblock %}{% block h1 %}Hodisa #{{ r.pk }}{% endblock %}
+{% block actions %}{% if request.user|can_view:'users' %}<a class="ab s" href="{% url 'user_detail' u.pk %}?tab=xavf">{% icon 'user' %}<span>Foydalanuvchi sahifasi</span></a>{% endif %}<a class="ab s" href="{% url 'security' %}?uid={{ u.pk }}">{% icon 'list' %}<span>Uning barcha hodisalari</span></a>{% endblock %}
+{% block content %}
+<section class="inch sev-{{ r.severity }}">
+  <span class="inci">{% icon r.icon %}</span>
+  <div class="sp"><div class="row" style="justify-content:flex-start;gap:6px">{% tag r.sev_label|add:' xavf' r.sev_tag %}{% if r.reviewed %}{% tag 'Ko‘rib chiqilgan' 'f' %}{% else %}{% tag 'Yangi' 'x' %}{% endif %}{% if r.count > 1 %}{% tag r.count|stringformat:'s'|add:' marta takrorlandi' %}{% endif %}</div>
+  <h2>{{ r.label }}</h2><p class="m">{{ r.desc }}</p></div>
+  <div class="inct"><div class="m">Birinchi marta</div><b>{{ r.created|dtm }}</b>{% if r.count > 1 %}<div class="m" style="margin-top:6px">Oxirgi marta</div><b>{{ r.last_at|dtm }}</b>{% endif %}</div>
+</section>
+
+<div class="gr g2 a">
+  <div class="c p"><h3 style="margin-bottom:12px">{% icon 'file-text' %} Hodisa tafsilotlari</h3>
+    <div class="kv">
+      <div><span>Sahifa</span><b>{% if r.url %}<a href="{{ r.url }}">{{ r.page_title|default:r.url }}</a>{% else %}—{% endif %}</b></div>
+      <div><span>URL</span><b class="mono">{{ r.url|default:"—" }}</b></div>
+      <div><span>Ochiq turgan kontent</span><b>{{ r.content|default:"—" }}</b></div>
+      <div><span>IP manzil</span><b class="mono">{{ r.ip|default:"—" }}</b></div>
+      <div><span>Qurilma / brauzer</span><b>{{ r.device|default:"—" }}</b></div>
+      <div><span>Ekran o‘lchami</span><b>{{ r.screen|default:"—" }}</b></div>
+      {% if r.meta.key %}<div><span>Bosilgan tugmalar</span><b class="mono">{{ r.meta.key }}</b></div>{% endif %}
+      {% if r.meta.detail %}<div><span>Qo‘shimcha</span><b>{{ r.meta.detail }}</b></div>{% endif %}
+      <div><span>User-Agent</span><b class="mono" style="font-size:11.5px">{{ r.user_agent|default:"—" }}</b></div>
+      {% if r.reviewed %}<div><span>Ko‘rib chiqdi</span><b>{{ r.reviewed_by.full_name|default:"—" }} · {{ r.reviewed_at|dtm }}</b></div>{% endif %}
+    </div>
+    {% if r.note %}<div class="sol mt"><b>Izoh:</b> {{ r.note|linebreaksbr }}</div>{% endif %}
+  </div>
+  <div>
+    <div class="c p"><div class="row" style="gap:14px;justify-content:flex-start"><div class="av" style="width:56px;height:56px;font-size:20px">{{ u.initials }}</div><div class="sp"><h3>{{ u.full_name }}</h3><div class="m">@{{ u.username }} · {{ u.uid }}{% if u.phone %} · {{ u.phone }}{% endif %}</div></div></div>
+      <div class="row mt" style="justify-content:flex-start;gap:6px">{% tag u.get_role_display %}{% if u.is_blocked %}{% tag 'Bloklangan' 'x' %}{% endif %}{% if u.online %}{% tag 'Onlayn' 'f' %}{% endif %}</div>
+      <div class="pmsum mt" style="margin-bottom:0"><div class="h"><b>{{ n_total }}</b><span>Jami hodisalar</span></div><div><b>{{ n_high }}</b><span>Yuqori xavfli</span></div></div>
+      {% for k, n, cnt in summary %}<div class="row" style="justify-content:space-between;margin-top:8px"><span class="m">{{ k }}</span><b>{{ n }} ta{% if cnt != n %} (×{{ cnt }}){% endif %}</b></div>{% endfor %}
+    </div>
+    {% if can_edit %}<div class="c p mt"><h3 style="margin-bottom:10px">{% icon 'tool' %} Choralar</h3>
+      <form method="post" action="{% url 'security_review' r.pk %}">{% csrf_token %}
+        {% include "partials/f.html" with label="Izoh (ixtiyoriy)" name="note" v=r.note type="textarea" ph="Masalan: talaba bilan gaplashildi" h="70px" %}
+        <label class="op" style="margin:0 0 10px"><input type="checkbox" name="all" value="1"><span>Uning barcha ko‘rilmagan hodisalarini ham yopish</span></label>
+        <div class="row" style="justify-content:flex-start">
+          {% if r.reviewed %}<button class="bt s" name="act" value="reopen">{% icon 'rotate-ccw' %} Qayta ochish</button>{% else %}<button class="bt" name="act" value="review">{% icon 'check' %} Ko‘rib chiqildi</button>{% endif %}
+          <button class="bt s" name="act" value="warn">{% icon 'alert-triangle' %} Ogohlantirish yuborish</button>
+          {% if can_block and not u.is_blocked %}<button class="bt d" name="act" value="block">{% icon 'slash' %} Bloklash</button>{% endif %}
+        </div></form></div>{% endif %}
+  </div>
+</div>
+
+<div class="gr g2e a mt">
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'list' %} Boshqa hodisalari</h3>
+  {% for o in other %}<a class="ls hv" href="{% url 'security_detail' o.pk %}"><span class="ic" style="background:var(--p3);color:var(--dg)">{% icon o.icon %}</span><span class="sp"><b>{{ o.label }}</b><div class="m">{{ o.last_at|dtm }} · {{ o.content|default:o.page_title|default:o.url }}</div></span>{% tag o.sev_label o.sev_tag %}{% if o.count > 1 %}{% tag o.count|stringformat:'s'|add:'×' %}{% endif %}</a>{% empty %}<div class="m">Boshqa hodisa yo‘q</div>{% endfor %}</div>
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'terminal' %} Oxirgi amallari (jurnal)</h3>
+  {% for l in logs %}<a class="ls hv" href="{% url 'log_detail' l.pk %}"><span class="ic" style="background:var(--p2)">{% icon 'activity' %}</span><span class="sp"><b>{{ l.label }}</b><div class="m">{{ l.created|dtm }}{% if l.obj_label %} · {{ l.obj_label }}{% endif %} · {{ l.ip|default:"" }}</div></span>{% tag l.result_tag.0 l.result_tag.1 %}</a>{% empty %}<div class="m">Jurnal bo‘sh</div>{% endfor %}
+  <h3 style="margin:14px 0 8px">{% icon 'log-in' %} Oxirgi kirishlar</h3>
+  {% for l in logins %}<div class="ls" style="cursor:default"><span class="sp"><b>{{ l.at|dtm }}</b><div class="m">{{ l.device }} · {{ l.ip|default:"—" }}</div></span>{% if l.ok %}{% tag 'Kirdi' 'f' %}{% else %}{% tag l.reason 'x' %}{% endif %}</div>{% empty %}<div class="m">Kirish tarixi yo‘q</div>{% endfor %}</div>
+</div>
+{% endblock %}

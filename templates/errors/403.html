@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Xatolik 403{% endblock %}{% block h1 %}Xatolik 403{% endblock %}
+{% block content %}<div class="c p" style="text-align:center;padding:40px"><h2 style="font-size:56px">403</h2><p class="m" style="margin:10px 0 20px">{% if "403" == "403" %}Sizda bu sahifani ko‘rish huquqi yo‘q.{% else %}Siz izlagan sahifa mavjud emas.{% endif %}</p><a class="bt" href="{% url 'home' %}">{% icon 'home' %} Bosh sahifaga</a></div>{% endblock %}

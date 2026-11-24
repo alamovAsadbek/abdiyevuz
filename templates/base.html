@@ -1,0 +1,47 @@
+{% load static ui %}<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="csrf" content="{{ csrf_token }}">
+<title>{% block title %}Bosh sahifa{% endblock %} — Abdiyev.uz</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+<script src="{% static 'js/theme.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+{% block head %}{% endblock %}
+</head>
+<body data-role="{{ request.user.role }}"{% if protect %} data-protect="1"{% if site.protect_watermark %} data-wm="1"{% endif %}{% endif %} data-uid="{% if request.user.is_authenticated %}{{ request.user.uid }}{% endif %}" data-name="{% if request.user.is_authenticated %}{{ request.user.full_name }}{% endif %}">
+<div id="app"><div class="app">
+<header class="top gl">
+  <a class="brand" href="{% url 'home' %}"><i>{% icon 'hexagon' %}</i>Abdiyev.uz</a><div class="sp"></div>
+  <button class="ib" data-theme-toggle aria-label="Mavzu">{% icon 'moon' %}</button>
+  {% if request.user.is_authenticated %}
+  <a class="ib" href="{% url 'notifications' %}" aria-label="Bildirishnomalar">{% icon 'bell' %}<span class="dot" id="bell-dot" {% if not unread %}hidden{% endif %}>{{ unread }}</span></a>
+  <a class="av" href="{% url 'profile' %}" aria-label="Profil">{{ request.user.initials }}</a>
+  {% else %}<a class="bt" href="{% url 'login' %}">Kirish</a>{% endif %}
+</header>
+<div class="bd">
+  <aside class="side">
+    {% for n in nav %}<a class="nv {% if n.on %}on{% endif %}" href="{{ n.url }}">{% icon n.icon %}<span class="sp">{{ n.label }}</span>{% if n.badge %}<span class="nvb">{{ n.badge }}</span>{% endif %}</a>{% endfor %}
+    <div class="sp"></div>
+    {% if request.user.is_authenticated %}<button class="nv" data-confirm="Tizimdan chiqmoqchimisiz?" data-post="{% url 'logout' %}">{% icon 'log-out' %}Chiqish</button>{% endif %}
+  </aside>
+  <div class="mn">
+    <div class="ph1">{% block back %}<button class="ib" data-back aria-label="Orqaga">{% icon 'arrow-left' %}</button>{% endblock %}<h1>{% block h1 %}{% endblock %}</h1></div>
+    <div class="pg a">
+      <div class="atb">{% block actions %}{% endblock %}</div>
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<nav class="bar gl">
+  {% for n in nav_main %}<a class="{% if n.on %}on{% endif %}" href="{{ n.url }}"><span class="bi">{% icon n.icon %}</span>{{ n.short }}</a>{% endfor %}
+  <button data-menu><span class="bi">{% icon 'menu' %}</span>Menyu</button>
+</nav>
+</div></div>
+<div id="ov"></div>
+{% if flash %}{{ flash|json_script:"flash" }}{% endif %}
+<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/perms.js' %}"></script>
+{% if protect %}<script src="{% static 'js/guard.js' %}"></script>{% endif %}
+{% block scripts %}{% endblock %}
+</body></html>

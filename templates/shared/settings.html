@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Sozlamalar{% endblock %}{% block back %}{% endblock %}{% block h1 %}Sozlamalar{% endblock %}
+{% block content %}
+{% if tabs|length > 1 %}{% include "partials/tabs.html" %}{% endif %}
+
+{% if tab == "me" %}
+<div class="c p"><div class="fgrid">
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Mavzu</div>{% include "partials/seg.html" with name="theme" pref="theme" options=theme_opts value="light" %}</div>
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Ro‘yxat ko‘rinishi</div>{% include "partials/seg.html" with name="mode" pref="mode" options=mode_opts value="cards" %}</div>
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Amallar paneli joyi</div>{% include "partials/seg.html" with name="act" pref="act" options=act_opts value="top" %}
+<button class="bt s mt" data-rail-reset>{% icon 'refresh-cw' %} Panel joyini asl holatga qaytarish</button></div>
+</div></div>
+
+{% elif tab == "site" %}
+<div class="c p"><h3 style="margin-bottom:6px">Umumiy sozlamalar</h3><p class="m" style="margin-bottom:10px">Butun sayt uchun amal qiladi.</p>
+<form method="post" action="{% url 'site_settings' %}">{% csrf_token %}
+{% include "partials/check.html" with name="articles_public" on=site.articles_public title="Maqolalarni login qilmasdan ko‘rish" desc="Yoqilsa, maqolalarni hamma — hatto ro‘yxatdan o‘tmagan mehmonlar ham — ko‘ra oladi" %}
+{% include "partials/check.html" with name="registration_open" on=site.registration_open title="Ro‘yxatdan o‘tish ochiq" desc="O‘chirilsa, yangi foydalanuvchilar o‘zi ro‘yxatdan o‘ta olmaydi" %}
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>
+
+{% elif tab == "roles" %}
+<div class="rolehint">{% icon 'info' %}<span><b>Rol standarti</b> — yangi yaratilgan foydalanuvchiga avtomatik beriladigan ruxsatlar. Har bir foydalanuvchiga alohida ruxsatni uning sahifasidagi <b>«Ruxsatlar»</b> tabida o‘zgartirasiz. <b>Ko‘rish</b> berilmagan bo‘lim umuman ko‘rinmaydi, faqat ko‘rish — read-only.</span></div>
+{% for role, label, rows, url in role_mx %}
+<div class="c p" style="margin-bottom:14px"><div class="row" style="margin-bottom:10px"><h3 class="sp">{% icon 'users' %} {{ label }} — standart ruxsatlar</h3>
+<label class="op" style="margin:0"><input type="checkbox" data-role-apply="{{ role }}"><span>Saqlaganda mavjud {{ label|lower }}larga ham qo‘llash</span></label></div>
+<div data-role-box="{{ url }}">{% include "partials/perm_matrix.html" with rows=rows %}</div>
+<div class="row mt"><button class="bt s" data-role-reset="{{ url }}">{% icon 'rotate-ccw' %} Dastlabki holat</button><button class="bt" data-role-save="{{ url }}" data-role="{{ role }}">{% icon 'save' %} Saqlash</button></div></div>
+{% endfor %}
+
+{% elif tab == "protect" %}
+<div class="sech"><div class="sechb"><span class="seci">{% icon 'shield' %}</span><div><h2>Ekran himoyasi</h2>
+<p>Yoqilgan rollar uchun: PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5, Win+Alt+R / Win+G (ekran yozish), Ctrl+P / S / U, DevTools, nusxalash va o‘ng tugma bloklanadi; urinish paytida kontent darhol yashiriladi, video to‘xtaydi, oynadan chiqilganda sahifa xiralashadi. Har bir urinish <a href="{% url 'security' %}" style="color:#fff"><b>Xavfsizlik</b></a> sahifasiga yoziladi va yuqori xavfli hodisalar haqida sizga darhol bildirishnoma keladi.</p></div></div></div>
+<div class="c p"><form method="post" action="{% url 'site_settings' %}">{% csrf_token %}<input type="hidden" name="section" value="protect">
+{% include "partials/check.html" with name="protect_students" on=site.protect_students title="Talabalar uchun himoya" desc="Tavsiya etiladi" %}
+{% include "partials/check.html" with name="protect_assistants" on=site.protect_assistants title="Yordamchi o‘qituvchilar uchun himoya" desc="Yordamchi ham talaba ma’lumotlarini olib keta olmasligi uchun" %}
+{% include "partials/check.html" with name="protect_watermark" on=site.protect_watermark title="Butun sahifada suv belgisi" desc="Har bir sahifada foydalanuvchi ismi, ID va sana xira yozuv bo‘lib turadi — rasm tarqalsa, kimdan chiqqani aniq ko‘rinadi" %}
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form>
+<div class="warn">{% icon 'alert-triangle' %}<span><b>Ochiq aytaman:</b> hech bir veb-sayt telefon kamerasi bilan suratga olishni yoki OBS kabi dasturlarni 100% to‘xtata olmaydi — brauzerga bunday ruxsat berilmagan. Shuning uchun himoya uch qatlamli: urinishni aniqlash va bloklash, sizga xabar berish, va suv belgisi orqali manbani aniqlash.</span></div></div>
+{% endif %}
+{% endblock %}

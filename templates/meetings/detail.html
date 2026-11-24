@@ -1,0 +1,61 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ m.title }}{% endblock %}{% block h1 %}{{ m.title }}{% endblock %}
+{% block content %}<div data-live="meetings" data-live-meeting="{{ m.pk }}">
+<div class="c p"><div class="row" style="gap:8px">{% tag tag.0 tag.1 %} {% if m.is_public %}{% tag "Ochiq" %}{% else %}{% tag "Yopiq" "x" %}{% endif %}<span class="m">Boshlovchi: <b>{{ m.host.full_name }}</b></span>{% if m.start_at %}<span class="m">· {{ m.start_at|dtm }}</span>{% endif %}</div>
+{% if m.description %}<p style="margin-top:12px;white-space:pre-line">{{ m.description }}</p>{% endif %}
+<div class="row mt">
+{% if m.is_ended %}<span class="m">Meeting yakunlangan{% if m.ended_at %} · {{ m.ended_at|dtm }}{% endif %}</span>
+{% elif can_join %}<a class="bt" href="{% url 'meeting_room' m.pk %}">{% icon 'video' %} {% if m.is_live %}Qo‘shilish{% else %}Xonaga kirish{% endif %}</a>
+{% else %}<span class="tag x">{{ why }}</span>{% endif %}
+{% if mod and not m.is_live and not m.is_ended %}<button class="bt" data-post="{% url 'meeting_start' m.pk %}">{% icon 'play' %} Meetingni boshlash</button>{% endif %}
+{% if perms.end and m.is_live %}<button class="bt s" data-confirm="Meeting hamma uchun yakunlansinmi?" data-post="{% url 'meeting_end' m.pk %}">{% icon 'square' %} Yakunlash</button>{% endif %}
+{% if can_edit %}<a class="bt s" href="{% url 'meeting_edit' m.pk %}">{% icon 'edit-2' %} Tahrirlash</a>{% endif %}
+{% if owner %}<button class="bt s" data-confirm="Meeting o‘chirilsinmi?" data-post="{% url 'meeting_delete' m.pk %}">{% icon 'trash-2' %} O‘chirish</button>{% endif %}</div>
+{% if not m.is_ended %}<div class="row mt"><label class="f sp" style="min-width:240px"><span>Meeting havolasi</span><input id="mlink" readonly value="{{ link }}" placeholder="Havola"></label><button class="bt s" data-copy="#mlink">{% icon 'copy' %} Nusxalash</button></div>{% endif %}</div>
+
+
+{% include "partials/tabs.html" %}
+{% if tab == 0 %}<div class="gr g4 a">
+<div class="c p"><div class="m">Holat</div><b>{% tag tag.0 tag.1 %}</b></div>
+<div class="c p"><div class="m">Rejalangan vaqt</div><b>{{ m.start_at|dtm|default:"—" }}</b></div>
+<div class="c p"><div class="m">Haqiqatda boshlangan</div><b>{{ m.started_at|dtm|default:"—" }}</b></div>
+<div class="c p"><div class="m">Tugagan</div><b>{% if m.is_ended %}{{ m.ended_at|dtm }}{% else %}—{% endif %}</b></div>
+<div class="c p"><div class="m">Davomiyligi</div><b>{{ dur }}</b></div>
+<div class="c p"><div class="m">Yaratilgan</div><b>{{ m.created|dtm }}</b></div>
+<div class="c p"><div class="m">Chat</div><b>{% if m.chat_on %}Yoqilgan{% else %}O‘chirilgan{% endif %}</b></div>
+<div class="c p"><div class="m">Umumiy qoidalar</div><b style="font-size:13px">Mikrofon: {% if m.mic_default %}ha{% else %}yo‘q{% endif %} · Kamera: {% if m.cam_default %}ha{% else %}yo‘q{% endif %} · Ekran: {% if m.screen_default %}ha{% else %}yo‘q{% endif %}</b></div></div>
+{% if not mod %}<div class="c p m mt">Qatnashish tarixi va izohlar faqat boshlovchi va yordamchilarga ko‘rinadi.</div>{% endif %}
+{% if mod %}<div class="c p mt m">So‘zlashga ruxsat: «Qatnashchilar» bo‘limida har biriga mikrofon, kamera, chat va ekran ruxsatini alohida bering, yoki xona ichida qo‘l ko‘targan odamga bir bosishda ruxsat bering. Umumiy qoidani «Tahrirlash» orqali o‘zgartirasiz.</div>{% endif %}
+{% elif tab == 1 %}<div class="row" style="margin:18px 0 10px"><h3 class="sp">Qatnashchilar ({{ n_members }})</h3>
+{% if invite_json %}<button class="bt" data-picker data-src="inv-json" data-url="{% url 'meeting_invite' m.pk %}" data-key="uids" data-multi="1" data-title="Qatnashchilarni taklif qilish" data-btn="Taklif qilish">{% icon 'user-plus' %} Taklif qilish</button>{% endif %}
+{% if cohost_json %}<button class="bt s" data-picker data-src="coh-json" data-url="{% url 'meeting_cohost_add' m.pk %}" data-key="uids" data-multi="1" data-title="Yordamchi o‘qituvchi biriktirish" data-btn="Biriktirish">{% icon 'shield' %} Yordamchi biriktirish</button>{% endif %}</div>
+{% if invite_json %}<script type="application/json" id="inv-json">{{ invite_json|safe }}</script>{% endif %}{% if cohost_json %}<script type="application/json" id="coh-json">{{ cohost_json|safe }}</script>{% endif %}
+{% for r in members %}{% with x=r.x %}<div class="c p" style="margin-bottom:10px"><div class="row" style="gap:10px"><div class="av">{{ x.user.initials }}</div><div class="sp"><b>{{ x.user.full_name }}</b> <span class="m">@{{ x.user.username }}</span>
+<div class="m">{% if r.role == "cohost" %}Yordamchi{% else %}Qatnashchi{% endif %}{% if x.online %} · <span style="color:var(--ok)">hozir xonada</span>{% endif %}{% if not x.invited and r.role != "cohost" %} · o‘zi qo‘shilgan{% endif %}</div></div>
+{% if x.banned %}{% tag "Chiqarilgan" "x" %}{% endif %}
+{% if perms.kick %}<form method="post" action="{% url 'meeting_member' m.pk x.user_id %}">{% csrf_token %}<input type="hidden" name="action" value="{% if x.banned %}unban{% else %}ban{% endif %}"><button class="bt s">{% if x.banned %}{% icon 'user-check' %} Qaytarish{% else %}{% icon 'user-x' %} Chiqarish{% endif %}</button></form>{% endif %}
+{% if perms.invite %}<form method="post" data-confirm-submit="Ro‘yxatdan olib tashlansinmi?" action="{% url 'meeting_member' m.pk x.user_id %}">{% csrf_token %}<input type="hidden" name="action" value="remove"><button class="bt s">{% icon 'x' %}</button></form>{% endif %}</div>
+{% if perms.grant %}<details style="margin-top:10px"><summary class="m" style="cursor:pointer">Ruxsatlar</summary>
+<form method="post" action="{% url 'meeting_member' m.pk x.user_id %}" class="row" style="margin-top:8px">{% csrf_token %}<input type="hidden" name="action" value="caps">
+<label class="f" style="min-width:140px"><span>Mikrofon</span><select name="mic"><option value="default" {% if x.can_mic is None %}selected{% endif %}>Umumiy qoida</option><option value="1" {% if x.can_mic is True %}selected{% endif %}>Ruxsat</option><option value="0" {% if x.can_mic is False %}selected{% endif %}>Taqiq</option></select></label>
+<label class="f" style="min-width:140px"><span>Kamera</span><select name="cam"><option value="default" {% if x.can_cam is None %}selected{% endif %}>Umumiy qoida</option><option value="1" {% if x.can_cam is True %}selected{% endif %}>Ruxsat</option><option value="0" {% if x.can_cam is False %}selected{% endif %}>Taqiq</option></select></label>
+<label class="f" style="min-width:140px"><span>Chat</span><select name="chat"><option value="default" {% if x.can_chat is None %}selected{% endif %}>Umumiy qoida</option><option value="1" {% if x.can_chat is True %}selected{% endif %}>Ruxsat</option><option value="0" {% if x.can_chat is False %}selected{% endif %}>Taqiq</option></select></label>
+<label class="f" style="min-width:140px"><span>Ekran</span><select name="screen"><option value="default" {% if x.can_screen is None %}selected{% endif %}>Umumiy qoida</option><option value="1" {% if x.can_screen is True %}selected{% endif %}>Ruxsat</option><option value="0" {% if x.can_screen is False %}selected{% endif %}>Taqiq</option></select></label>
+<button class="bt">{% icon 'save' %} Saqlash</button></form></details>{% endif %}
+{% if owner and r.role == "cohost" %}<details style="margin-top:10px"><summary class="m" style="cursor:pointer">Yordamchi huquqlari</summary>
+<form method="post" action="{% url 'meeting_member' m.pk x.user_id %}" style="margin-top:8px">{% csrf_token %}<input type="hidden" name="action" value="perms"><div class="gr a">
+{% for code,label,ic in mperms %}<label class="op"><input type="checkbox" name="mperms" value="{{ code }}" {% if code in r.perms %}checked{% endif %}><span><b>{{ label }}</b></span></label>{% endfor %}</div>
+<div class="row mt"><button class="bt">{% icon 'save' %} Saqlash</button></div></form>
+<form method="post" action="{% url 'meeting_member' m.pk x.user_id %}" style="margin-top:8px">{% csrf_token %}<input type="hidden" name="action" value="cohost_off"><button class="bt s">Yordamchilikdan olish</button></form></details>{% endif %}
+</div>{% endwith %}{% empty %}<div class="c p m">Hozircha qatnashchilar yo‘q. {% if m.is_public %}Ochiq meeting — tizimga kirgan hamma qo‘shila oladi.{% else %}«Taklif qilish» tugmasi orqali qo‘shing.{% endif %}</div>{% endfor %}
+<h3 style="margin:20px 0 10px">Qatnashganlar statistikasi</h3><div class="c tw"><table><tr><th>Foydalanuvchi</th><th>Roli</th><th>Birinchi kirgan</th><th>Oxirgi chiqqan</th><th>Jami vaqt</th><th>Kirishlar</th><th>Izohlar</th></tr>
+{% for st in stats %}<tr><td><b>{{ st.user.full_name }}</b></td><td>{{ st.role }}</td><td>{{ st.first|dtm }}</td><td>{% if st.open %}<span class="tag f">xonada</span>{% else %}{{ st.last|dtm }}{% endif %}</td><td>{{ st.dur }}</td><td>{{ st.n }}</td><td>{{ st.comments }}</td></tr>{% empty %}<tr><td colspan="7" class="m">Hali hech kim kirmagan</td></tr>{% endfor %}</table></div>
+{% elif tab == 2 %}<div class="c tw"><table><tr><th>Foydalanuvchi</th><th>Roli</th><th>Kirgan</th><th>Chiqqan</th><th>Qolgan vaqti</th></tr>
+{% for x in sessions %}<tr><td><b>{{ x.user.full_name }}</b> <span class="m">@{{ x.user.username }}</span></td><td>{{ x.role_uz }}</td><td>{{ x.joined_at|dtm }}</td><td>{% if x.open %}<span class="tag f">xonada</span>{% else %}{{ x.left_at|dtm }}{% endif %}</td><td>{{ x.dur }}</td></tr>{% empty %}<tr><td colspan="5" class="m">Hali hech kim kirmagan</td></tr>{% endfor %}</table></div>
+{% elif tab == 3 %}<div class="c p">{% for c in comments %}<div class="row" style="align-items:flex-start;flex-wrap:nowrap;padding:8px 0;border-bottom:1px solid var(--b)"><div class="av">{{ c.user.initials }}</div><div class="sp"><b>{{ c.user.full_name }}</b> <span class="tag">{{ c.role_uz }}</span> <span class="m">{{ c.created|dtm }}</span>
+{% if c.is_deleted %}<div class="m"><i>O‘chirilgan{% if c.deleted_by %} ({{ c.deleted_by.full_name }} tomonidan){% endif %}</i>{% if owner %}: {{ c.text }}{% endif %}</div>{% else %}<div style="overflow-wrap:anywhere">{{ c.text }}</div>{% endif %}</div></div>{% empty %}<div class="m">Izohlar yo‘q</div>{% endfor %}</div>
+{% elif tab == 4 %}{% for r in recs %}<div class="c p" style="margin-bottom:12px"><div class="row"><b class="sp">Yozuv #{{ forloop.counter }}</b><span class="m">{{ r.started_at|dtm }} · {{ r.dur }}{% if not r.active %} · {{ r.mb }} MB{% endif %}</span>{% if r.active %}{% tag "Yozilmoqda" "x" %}{% else %}<a class="bt s" href="{% url 'meeting_rec_file' m.pk r.pk %}?dl=1">{% icon 'download' %} Saqlab olish</a>{% endif %}</div>
+{% if not r.active %}<video controls preload="metadata" src="{% url 'meeting_rec_file' m.pk r.pk %}" style="width:100%;max-height:70vh;margin-top:10px;border-radius:14px;background:#000"></video>{% endif %}</div>{% empty %}<div class="c p m">Bu meeting yozib olinmagan. Jonli meeting xonasida «Yozib olish» tugmasini bosing.</div>{% endfor %}
+{% elif tab == 5 %}<div class="c tw"><table><tr><th>Vaqt</th><th>Amal</th><th>Kim</th><th>Kimga</th><th>Izoh</th></tr>{% for e in events %}<tr><td>{{ e.created|dtm }}</td><td><b>{{ e.action }}</b></td><td>{{ e.actor.full_name|default:"Tizim" }}</td><td>{{ e.target.full_name|default:"—" }}</td><td class="m">{{ e.note }}</td></tr>{% empty %}<tr><td colspan="5" class="m">Tarix bo‘sh</td></tr>{% endfor %}</table></div>
+{% endif %}
+</div>{% endblock %}

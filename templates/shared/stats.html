@@ -1,0 +1,47 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Statistika{% endblock %}{% block back %}{% endblock %}{% block h1 %}{% if student %}Mening statistikam{% elif main %}Sayt statistikasi{% else %}Guruhlarim statistikasi{% endif %}{% endblock %}
+{% block content %}
+<div class="tabs c">{% for k, n in tabs %}<a class="{% if k == tab %}on{% endif %}" href="?tab={{ k }}">{{ n }}</a>{% endfor %}</div>
+
+{% if tab == "sum" and student %}
+<div class="hero"><div class="m2">Shaxsiy natijalaringiz</div><h2>{{ points }} ball</h2><p>Faqat sizning faoliyatingiz: testlar, vazifalar va ko‘rilgan darslar.</p></div>
+<div class="gr g4 a">
+{% include "partials/stat.html" with i="award" l="Mening ballim" n=points c="p1" %}
+{% include "partials/stat.html" with i="check-square" l="Test urinishlarim" n=n_att c="p2" %}
+{% include "partials/stat.html" with i="percent" l="O‘rtacha natijam (%)" n=avg c="p3" %}
+{% include "partials/stat.html" with i="trending-up" l="Eng yaxshi natijam (%)" n=best c="p4" %}
+{% include "partials/stat.html" with i="clipboard" l="Topshirgan vazifalarim" n=n_sub c="p1" %}
+{% include "partials/stat.html" with i="check-circle" l="Qabul qilingan" n=n_ok c="p2" %}
+{% include "partials/stat.html" with i="clock" l="Tekshirilmoqda" n=n_pending c="p3" %}
+{% include "partials/stat.html" with i="play-circle" l="Ko‘rgan darslarim" n=n_views c="p4" %}</div>
+<div class="gr g2e a mt"><div class="c p"><h3>Test natijalarim dinamikasi</h3>{{ line }}</div><div class="c p"><h3>Vazifalarim holati</h3>{{ donut }}</div></div>
+<div class="gr g2e a mt"><div class="c p"><h3 style="margin-bottom:10px">O‘rtacha natija shkalasi</h3>{{ ph }}</div>
+<div class="c p"><h3 style="margin-bottom:10px">Oxirgi 7 kun — ko‘rgan darslarim</h3><div class="ch">{% for b in week_bars %}<div><i style="--h:{{ b.h }}%"></i>{{ b.v }}</div>{% endfor %}</div></div></div>
+<div class="c p mt"><h3>Mavzular bo‘yicha o‘zlashtirishim</h3>{{ tiles }}</div>
+
+{% elif tab == "sum" %}
+{% if main %}<div class="gr g4 a">
+{% include "partials/stat.html" with i="users" l="Jami foydalanuvchilar" n=n_users c="p1" %}
+{% include "partials/stat.html" with i="user" l="Talabalar" n=n_students c="p2" %}
+{% include "partials/stat.html" with i="user-check" l="Yordamchi o‘qituvchilar" n=n_assist c="p3" %}
+{% include "partials/stat.html" with i="wifi" l="Hozir onlayn" n=n_online c="p4" %}
+{% include "partials/stat.html" with i="play-circle" l="Kurslar" n=n_courses c="p1" %}
+{% include "partials/stat.html" with i="film" l="Video darslar" n=n_lessons c="p2" %}
+{% include "partials/stat.html" with i="check-square" l="Testlar" n=n_tests c="p3" %}
+{% include "partials/stat.html" with i="shield" l="Xavfsizlik hodisalari (7 kun)" n=n_inc c="p4" %}</div>{% endif %}
+<div class="gr g4 a mt">
+{% if not main %}{% include "partials/stat.html" with i="users" l="Talabalarim" n=n_students c="p1" %}{% endif %}
+{% include "partials/stat.html" with i="activity" l="Bugun faol talabalar" n=active_today c="p2" %}
+{% include "partials/stat.html" with i="layers" l="Guruhlar" n=n_groups c="p3" %}
+{% include "partials/stat.html" with i="award" l="Talabalar jami bali" n=points c="p4" %}
+{% include "partials/stat.html" with i="check-square" l="Test urinishlari" n=n_att c="p1" %}
+{% include "partials/stat.html" with i="percent" l="O‘rtacha natija (%)" n=avg c="p2" %}
+{% include "partials/stat.html" with i="clipboard" l="Topshirilgan vazifalar" n=n_sub c="p3" %}
+{% include "partials/stat.html" with i="clock" l="Tekshirilmoqda" n=n_pending c="p4" %}
+{% if main %}{% include "partials/stat.html" with i="eye" l="Dars ko‘rishlar" n=views c="p1" %}{% include "partials/stat.html" with i="slash" l="Bloklanganlar" n=n_blocked c="p3" %}{% endif %}</div>
+<div class="gr g2e a mt"><div class="c p"><h3>So‘nggi 14 kun: testlar va vazifalar</h3>{{ line }}<div class="row m" style="font-size:12px;justify-content:flex-start"><span><b style="color:var(--pr)">━</b> Test urinishlari</span><span><b style="color:#ff9db5">━</b> Vazifalar</span></div></div><div class="c p"><h3>Vazifalar holati</h3>{{ donut }}</div></div>
+{% if main %}<div class="gr g2e a mt"><div class="c p"><h3 style="margin-bottom:10px">Yangi foydalanuvchilar (14 kun)</h3><div class="ch">{% for b in nu_bars %}<div><i style="--h:{{ b.h }}%"></i>{{ b.v }}</div>{% endfor %}</div></div><div class="c p"><h3>Rollar bo‘yicha</h3>{{ role_donut }}</div></div>{% endif %}
+<div class="c p mt"><h3>Mavzular bo‘yicha o‘zlashtirish</h3>{{ tiles }}</div>
+{% if top %}<div class="c p mt"><h3 style="margin-bottom:10px">Eng faol talabalar</h3>{% for s in top %}<div class="ls"><span class="no">{{ forloop.counter }}</span><div class="av">{{ s.initials }}</div><span class="sp"><b>{{ s.full_name }}</b><div class="m">{{ s.uid }}</div></span>{% tag s.points|stringformat:'s'|add:' ball' 'f' %}</div>{% endfor %}</div>{% endif %}
+{% else %}{% include "partials/list.html" %}{% endif %}
+{% endblock %}

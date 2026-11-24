@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ m.title }}{% endblock %}{% block h1 %}{{ m.title }}{% endblock %}
+{% block content %}<div class="c p"><div class="row">{% if m.important %}{% tag 'Muhim' 'x' %}{% endif %}<span class="m">{{ m.author.full_name|default:"Tizim" }} · {{ m.created|dtm }}</span></div><div class="mt">{{ m.body|safe }}</div></div>{% endblock %}

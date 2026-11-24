@@ -1,0 +1,3 @@
+{% load ui %}<div class="cs"><input type="hidden" name="{{ name }}" value="{{ value }}">
+<button type="button" class="cb"><span>{% for o in options %}{% if o.0|stringformat:"s" == value|stringformat:"s" %}{{ o.1 }}{% endif %}{% endfor %}</span>{% icon 'chevron-down' %}</button>
+<div class="cl">{% for o in options %}<div class="co {% if o.0|stringformat:'s' == value|stringformat:'s' %}on{% endif %}" data-v="{{ o.0 }}">{{ o.1 }}</div>{% endfor %}</div></div>

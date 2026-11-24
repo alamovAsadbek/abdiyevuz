@@ -1,0 +1,28 @@
+{% extends "auth/base_auth.html" %}{% load ui %}
+{% block title %}Kirish{% endblock %}
+{% block content %}
+<h2 style="margin-bottom:4px">Xush kelibsiz 👋</h2><p class="m" style="margin-bottom:18px">Davom etish uchun hisobingizga
+    kiring</p>
+{% if error %}
+<div class="errbox">{% icon 'alert-circle' %} {{ error }}</div>{% endif %}
+<form method="post" autocomplete="on">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}"><input type="hidden" name="tz"><input type="hidden" name="lang"><input
+            type="hidden" name="scr">
+    <label class="f"><span>Foydalanuvchi nomi</span>
+        <div class="ifi">{% icon 'user' %}<input name="username" value="{{ username|default:'' }}"
+                                                 placeholder="Masalan: ali.valiyev" required autocomplete="username"
+                                                 autofocus></div>
+    </label>
+    <label class="f"><span>Parol</span>
+        <div class="ifi">{% icon 'lock' %}<input type="password" name="password" placeholder="Parolingizni kiriting"
+                                                 required autocomplete="current-password" id="lpw">
+            <button type="button" class="ifb" data-pw-eye="#lpw" aria-label="Parolni ko‘rsatish">{% icon 'eye' %}
+            </button>
+        </div>
+    </label>
+    <button class="bt mt" style="width:100%;height:48px">{% icon 'log-in' %} Kirish</button>
+</form>
+{% if site.registration_open %}<p class="m mt" style="text-align:center">Hisobingiz yo‘qmi? <a
+        href="{% url 'register' %}"><b>Ro‘yxatdan o‘ting</b></a></p>{% endif %}
+<p class="m mt" style="text-align:center"><a href="{% url 'home' %}">← Bosh sahifaga qaytish</a></p>
+{% endblock %}

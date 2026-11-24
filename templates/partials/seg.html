@@ -1,0 +1,1 @@
+<div class="tabs c" style="margin:0" data-seg{% if pref %} data-pref="{{ pref }}"{% endif %}><input type="hidden" name="{{ name }}" value="{{ value }}">{% for o in options %}<button type="button" class="{% if o.0|stringformat:'s' == value|stringformat:'s' %}on{% endif %}" data-v="{{ o.0 }}">{{ o.1 }}</button>{% endfor %}</div>

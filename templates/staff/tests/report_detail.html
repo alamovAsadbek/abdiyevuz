@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Xato xabari{% endblock %}{% block h1 %}{{ r.test.title }} — {{ r.question_index|add:1 }}-savol{% endblock %}
+{% block actions %}<button class="ab" data-post="{% url 'report_done' r.pk %}">{% icon 'check' %}<span>Ko‘rib chiqildi</span></button><a class="ab s" href="{% url 'test_edit' r.test.pk %}">{% icon 'edit-2' %}<span>Testni tahrirlash</span></a><button class="ab x" data-post="{% url 'report_delete' r.pk %}" data-confirm="Xabar o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endblock %}
+{% block content %}<div class="c p"><div class="m">{{ r.user.full_name }} · {{ r.created|dtm }}</div><div class="mt">{{ r.html|safe }}</div></div>
+{% if q %}<div class="c p mt"><h3>Savol</h3><div class="mt">{{ q.text|safe }}</div>{% for o in q.options %}<div class="op {% if forloop.counter0 == q.correct %}ok{% endif %}"><b>{{ forloop.counter0|letter }}.</b> <span>{{ o|safe }}</span></div>{% endfor %}</div>{% endif %}{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Tizim jurnali{% endblock %}{% block back %}{% endblock %}{% block h1 %}Tizim jurnali (log){% endblock %}
+{% block actions %}{% if request.user|can_view:'security' %}<a class="ab s" href="{% url 'security' %}">{% icon 'shield' %}<span>Xavfsizlik hodisalari</span></a>{% endif %}{% endblock %}
+{% block content %}
+<div class="gr g4 a">
+{% include "partials/stat.html" with i="activity" l="Bugungi amallar" n=st.today c="p1" %}
+{% include "partials/stat.html" with i="log-in" l="Bugungi kirishlar" n=st.logins c="p2" %}
+{% include "partials/stat.html" with i="x-circle" l="Xatolar (7 kun)" n=st.fail c="p3" %}
+{% include "partials/stat.html" with i="lock" l="Ruxsatsiz urinishlar (7 kun)" n=st.denied c="p4" %}</div>
+<div class="rolehint mt">{% icon 'info' %}<span>Har bir o‘zgartirish (yaratish, tahrirlash, o‘chirish, ruxsat berish, baholash…), kirish/chiqish, fayl yuklab olish va ruxsatsiz urinishlar avtomatik yoziladi. Parollar hech qachon yozilmaydi. Fayl ko‘rinishidagi jurnal: <b>logs/audit.log</b>, <b>logs/security.log</b>, <b>logs/error.log</b>.</span></div>
+{% if filt_user %}<div class="c p row" style="margin-bottom:12px"><span class="sp">Faqat <b>{{ filt_user.full_name }}</b> bilan bog‘liq yozuvlar</span><a class="bt s" href="{% url 'logs' %}">{% icon 'x' %} Filtrni olib tashlash</a></div>{% endif %}
+{% include "partials/list.html" %}
+{% endblock %}

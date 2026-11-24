@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ t.title }}{% endblock %}{% block h1 %}{{ t.title }}{% endblock %}
+{% block content %}
+<div class="warn" data-until="{{ t.end_at|date:'c' }}">{% icon 'clock' %}<span>Tugashiga: <b data-cd></b> · Vaqt tugasa test avtomatik yopiladi</span></div>
+{% if t.mode == "file" %}<div class="c p mt"><div class="pvh" data-kind="test" data-pk="{{ t.pk }}"></div></div>{% endif %}
+<form method="post" data-confirm-submit="Testni yakunlaysizmi? Javoblarni keyin o‘zgartirib bo‘lmaydi." class="mt">{% csrf_token %}
+{% for q in qs %}<div class="c p" style="margin-bottom:12px"><div class="row"><span class="no">{{ forloop.counter }}</span>{% if request.user.is_authenticated %}<button type="button" class="ib2" style="margin-left:auto" title="Xatolik haqida xabar" data-report="{% url 'report_new' t.pk %}" data-q="{{ forloop.counter0 }}">{% icon 'flag' %}</button>{% endif %}</div>
+{% if t.mode == "manual" %}<div class="mt">{{ q.text|safe }}</div>{% for o in q.options %}<label class="op"><input type="radio" name="q{{ forloop.parentloop.counter0 }}" value="{{ forloop.counter0 }}"><span><b>{{ forloop.counter0|letter }}.</b> {{ o|safe }}</span></label>{% endfor %}
+{% else %}<div class="row mt">{% for o in q.options %}<label class="op" style="margin-top:0"><input type="radio" name="q{{ forloop.parentloop.counter0 }}" value="{{ forloop.counter0 }}"><span><b>{{ o }}</b></span></label>{% endfor %}</div>{% endif %}</div>{% endfor %}
+<button class="bt">{% icon 'check' %} Testni yakunlash</button></form>
+{% endblock %}

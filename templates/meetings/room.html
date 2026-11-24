@@ -1,0 +1,37 @@
+{% load static ui %}<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="csrf" content="{{ csrf_token }}">
+<title>{{ m.title }} — Abdiyev.uz</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+<script src="{% static 'js/theme.js' %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
+</head>
+<body data-role="{{ request.user.role }}" data-room="1" data-uid="{{ request.user.uid }}" data-name="{{ request.user.full_name }}">
+<div id="room" data-pk="{{ m.pk }}" data-me="{{ request.user.pk }}" data-bk="{% url 'meeting_detail' m.pk %}" data-home="{% url 'meetings' %}">
+ <div class="mr-lobby" id="lobby"><div class="c p mr-lcard">
+  <h2>{{ m.title }}</h2><p class="m">{% if m.is_public %}Ochiq meeting{% else %}Yopiq meeting{% endif %} · Boshlovchi: {{ m.host.full_name }}</p>
+  <div class="mr-prev"><video id="prev" autoplay playsinline muted></video><div class="mr-noprev" id="noprev">{% icon 'video-off' %}<span>Kamera o‘chiq</span></div></div>
+  <div class="row mt" style="justify-content:center"><button class="mr-cb" id="lb-mic" data-on="0" title="Mikrofon">{% icon 'mic-off' %}</button><button class="mr-cb" id="lb-cam" data-on="0" title="Kamera">{% icon 'video-off' %}</button></div>
+  <p class="m mt" id="lb-note">Kamera va mikrofonni hohlasangiz qo‘shilishdan oldin yoqing — keyin ham o‘zgartira olasiz.</p>
+  <div class="row mt" style="justify-content:center"><button class="bt" id="join">{% icon 'log-in' %} Qo‘shilish</button><a class="bt s" href="{% url 'meeting_detail' m.pk %}">Orqaga</a></div></div></div>
+ <div class="mr-app" id="mr-app" hidden>
+  <header class="mr-top"><b class="mr-title">{{ m.title }}</b><span class="tag f" id="mr-live">Jonli</span><span class="tag x mr-rec" id="mr-rec" hidden>● Yozilmoqda</span><span class="m" id="mr-clock"></span><div class="sp"></div>
+   <button class="mr-cb sm" id="b-view" title="Ko‘rinish: katta oyna / hammasi">{% icon 'layout' %}</button><button class="mr-cb sm" id="tg-panel" title="Chat va qatnashchilar">{% icon 'message-square' %}<span class="dot" id="mr-unread" hidden>0</span></button></header>
+  <div class="mr-main"><div class="mr-stage"><div class="mr-grid" id="grid" data-mode="speaker"></div></div>
+   <aside class="mr-side" id="side"><div class="tabs c" style="margin:0 0 8px"><button type="button" class="on" data-tab="chat">Chat</button><button type="button" data-tab="people">Qatnashchilar <span id="pc">0</span></button></div>
+    <div class="mr-pane" id="pane-chat"><div class="mr-msgs" id="msgs"></div><div class="mr-mention" id="mention" hidden></div>
+     <form id="cform" class="row" style="flex-wrap:nowrap;gap:6px"><input id="ctext" maxlength="1000" autocomplete="off" placeholder="Xabar yozing… @ bilan belgilang"><button class="bt" aria-label="Yuborish">{% icon 'send' %}</button></form></div>
+    <div class="mr-pane" id="pane-people" hidden><div id="people"></div></div></aside></div>
+  <footer class="mr-bar"><button class="mr-cb" id="b-mic" title="Mikrofon">{% icon 'mic-off' %}</button><button class="mr-cb" id="b-cam" title="Kamera">{% icon 'video-off' %}</button><button class="mr-cb" id="b-scr" title="Ekranni ulashish">{% icon 'monitor' %}</button><button class="mr-cb" id="b-hand" title="Qo‘l ko‘tarish">{% icon 'hand' %}</button>
+   <button class="mr-cb" id="b-muteall" title="Hammani ovozini o‘chirish" hidden>{% icon 'volume-x' %}</button><button class="mr-cb" id="b-chat" title="Chatni yoqish/o‘chirish" hidden>{% icon 'message-circle' %}</button><button class="mr-cb" id="b-allow" title="Hammaga gapirishga ruxsat berish / olib qo‘yish" hidden>{% icon 'users' %}</button><button class="mr-cb" id="b-rec" title="Yozib olish" hidden>{% icon 'circle' %}</button>
+   <button class="mr-cb dg" id="b-leave" title="Chiqish">{% icon 'phone-off' %}</button><button class="mr-cb dg" id="b-end" title="Hamma uchun yakunlash" hidden>{% icon 'square' %}</button></footer>
+ </div>
+ <div class="mr-over" id="over" hidden><div class="c p" style="text-align:center;max-width:420px"><h3 id="over-t"></h3><p class="m" id="over-p" style="margin:8px 0 16px"></p><a class="bt" id="over-a" href="{% url 'meetings' %}">Meetinglarga qaytish</a></div></div>
+</div>
+<div id="ov"></div>
+{{ ice_obj|json_script:"ice" }}
+<script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/meeting.js' %}"></script>
+</body></html>

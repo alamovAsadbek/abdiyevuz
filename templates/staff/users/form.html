@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Yangi foydalanuvchi{% endblock %}{% block h1 %}Yangi foydalanuvchi{% endblock %}
+{% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
+<label class="f" style="grid-column:1/-1"><span>Ism familiya</span><input name="full_name" value="{{ d.full_name }}" placeholder="Masalan: Ali Valiyev" data-autouser="#un" required></label>
+<label class="f"><span>Foydalanuvchi nomi</span><input id="un" name="username" value="{{ d.username }}" placeholder="ali.valiyev" data-manual required></label>
+{% include "partials/f.html" with label="Telefon" name="phone" v=d.phone ph="+998 90 123 45 67" phone=1 %}
+<div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options value=d.role|default:"student" %}</div>
+<div class="f"><span>Guruh</span>{% include "partials/select.html" with name="group" options=group_options value="" %}</div>
+<label class="f" style="grid-column:1/-1"><span>Parol</span><div class="row" style="flex-wrap:nowrap"><input id="pw" name="password" value="{{ pw }}" placeholder="Kamida 6 ta belgi" required><button type="button" class="ib2" data-regen="#pw" title="Yangi parol">{% icon 'refresh-cw' %}</button><button type="button" class="ib2" data-copy="#pw" title="Nusxalash">{% icon 'copy' %}</button></div></label>
+{% if request.user.is_main %}{% for role, rows in matrices %}<div data-when="role={{ role }}" style="grid-column:1/-1" class="mt">
+<div class="row" style="margin-bottom:8px"><h3 class="sp">{% icon 'key' %} Ruxsatlar — {% if role == 'assistant' %}yordamchi o‘qituvchi{% else %}talaba{% endif %}</h3>
+<label class="op" style="margin:0"><input type="checkbox" name="custom_perms" value="1" data-perm-custom checked><span><b>Hozir belgilash</b></span></label></div>
+<div class="rolehint">{% icon 'info' %}<span>Rol standarti belgilab qo‘yilgan. <b>Ko‘rish</b> berilmagan bo‘lim foydalanuvchiga umuman ko‘rinmaydi, faqat <b>Ko‘rish</b> berilsa — faqat o‘qish uchun ochiladi. {% if role == 'student' %}Talabaga faqat ko‘rish ruxsati beriladi.{% else %}Qo‘shish / tahrirlash / o‘chirish — CRUD amallari.{% endif %}</span></div>
+{% include "partials/perm_matrix.html" with rows=rows prefix="p_"|add:role %}</div>{% endfor %}{% endif %}
+</div><button class="bt mt">{% icon 'user-plus' %} Qo‘shish</button></form></div>{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Dars{% endblock %}{% block h1 %}{% if l %}Darsni tahrirlash{% else %}Yangi dars{% endif %}{% endblock %}
+{% block content %}<div class="c p"><form method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Dars nomi" name="title" v=l.title ph="Masalan: Atom tuzilishi" wide=1 req=1 %}
+{% include "partials/f.html" with label="Tavsif" name="description" v=l.description type="textarea" ph="Dars haqida qisqacha" wide=1 %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Video manbasi</div>{% include "partials/seg.html" with name="video_kind" options=kinds value=l.video_kind|default:"none" %}</div>
+<div data-when="video_kind=link" style="grid-column:1/-1">{% include "partials/f.html" with label="Video havolasi (YouTube, Vimeo, Rutube yoki .mp4)" name="video_url" v=l.video_url ph="https://www.youtube.com/watch?v=..." %}</div>
+<div data-when="video_kind=iframe" style="grid-column:1/-1">{% include "partials/f.html" with label="Iframe kodi" name="video_iframe" type="textarea" ph='<iframe src="https://www.youtube.com/embed/..."></iframe>' %}</div>
+<div data-when="video_kind=file" style="grid-column:1/-1"><label class="f"><span>Video fayl (MP4, MOV, MKV, WEBM)</span><input type="file" name="video_file" accept="video/*" placeholder="Video faylni tanlang"></label>
+<div class="warn">{% icon 'info' %}<span>Video avtomatik siqiladi (sifat saqlanadi, hajm kamayadi), shifrlangan HLS ko‘rinishida saqlanadi va talabalar yuklab ola olmaydi.{% if l.video_kind == 'file' %} Joriy: {{ l.video_name }} — {{ l.get_hls_status_display }}.{% endif %}</span></div></div>
+</div><button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endblock %}

@@ -1,0 +1,11 @@
+Django>=5.0,<5.3
+channels>=4.1
+daphne>=4.1
+PyJWT>=2.8
+nh3>=0.2.17
+pymupdf>=1.24
+Pillow>=10.1
+whitenoise>=6.6
+# Production (tavsiya etiladi):
+# channels-redis>=4.2
+# psycopg[binary]>=3.1

@@ -1,0 +1,4 @@
+{% load ui %}<div data-live="meetings">{% if meet_live or meet_soon %}<h3 style="margin:20px 0 12px">Uchrashuvlar (meeting)</h3>
+{% for m in meet_live %}<a class="ls hv" href="{% url 'meeting_detail' m.pk %}" style="color:inherit;text-decoration:none"><span class="ic" style="background:var(--p3)">{% icon 'video' %}</span><span class="sp"><b>{{ m.title }}</b><div class="m">{{ m.host.full_name }} · {% if m.is_public %}ochiq{% else %}yopiq{% endif %}</div></span>{% tag "Jonli" "f" %} <span class="bt">Qo‘shilish</span></a>{% endfor %}
+{% for m in meet_soon %}<a class="ls hv" href="{% url 'meeting_detail' m.pk %}" style="color:inherit;text-decoration:none"><span class="ic">{% icon 'calendar' %}</span><span class="sp"><b>{{ m.title }}</b><div class="m">{{ m.host.full_name }}{% if m.start_at %} · {{ m.start_at|dtm }}{% endif %}</div></span>{% tag "Rejalashtirilgan" %}</a>{% endfor %}
+<a class="m" href="{% url 'meetings' %}">Barcha uchrashuvlar →</a>{% endif %}</div>

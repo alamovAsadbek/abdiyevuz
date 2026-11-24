@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Tekshirish{% endblock %}{% block h1 %}{{ s.student.full_name }} — {{ t.title }}{% endblock %}
+{% block actions %}<a class="ab s" href="{% url 'file_download' 'sub' s.pk %}">{% icon 'download' %}<span>Yuklab olish</span></a>{% endblock %}
+{% block content %}
+<div class="gr g2 a"><div class="c p"><div class="row" style="margin-bottom:10px"><b class="sp">{{ s.filename }}</b><span class="m">{{ s.submitted_at|dtm }}</span></div><div class="pvh" data-kind="sub" data-pk="{{ s.pk }}"></div></div>
+<div class="c p"><h3 style="margin-bottom:10px">Baholash</h3><p class="m">{{ t.description }}</p>
+<form method="post" class="mt">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Ball (0 dan eng yuqori ballgacha)" name="score" type="number" v=s.score ph="Ballni kiriting" min0=1 %}
+{% include "partials/f.html" with label="Izoh" name="comment" v=s.comment type="textarea" ph="Talabaga izoh yozing (qaytarishda majburiy)" wide=1 %}</div>
+<div class="row mt"><button class="bt" name="act" value="accept">{% icon 'check' %} Qabul qilish</button><button class="bt d" name="act" value="return">{% icon 'rotate-ccw' %} Qaytarish</button>{% if s.status != 'pending' %}<button class="bt s" name="act" value="reset">{% icon 'x' %} Bahoni bekor qilish</button>{% endif %}</div></form></div></div>
+{% endblock %}

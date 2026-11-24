@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Ko‘plab qo‘shish{% endblock %}{% block h1 %}Talabalarni ko‘plab qo‘shish{% endblock %}
+{% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Talabalar ro‘yxati (har qatorda: Ism familiya, telefon)" name="lines" type="textarea" h="180px" ph="Ali Valiyev, +998 90 123 45 67&#10;Nilufar Karimova, +998 91 765 43 21" wide=1 %}
+<div class="f"><span>Guruh</span>{% include "partials/select.html" with name="group" options=group_options value="" %}</div></div>
+<button class="bt mt">{% icon 'users' %} Qo‘shish</button></form></div>
+{% if result %}<div class="c tw mt"><table><tr><th>Talaba</th><th>Login</th><th>Parol</th><th>Telefon</th></tr>{% for r in result %}<tr><td>{{ r.name }}</td><td>{{ r.un }}</td><td><code>{{ r.pw }}</code></td><td>{% if r.bad %}{% tag 'Noto‘g‘ri raqam' 'x' %}{% else %}{{ r.ph|default:"—" }}{% endif %}</td></tr>{% endfor %}</table></div>
+<textarea id="bulkres" readonly placeholder="Nusxalash uchun" style="position:absolute;left:-9999px">{% for r in result %}{{ r.name }} — login: {{ r.un }} · parol: {{ r.pw }}
+{% endfor %}</textarea><button class="bt s mt" data-copy="#bulkres">{% icon 'copy' %} Hammasini nusxalash</button>
+<div class="warn">{% icon 'alert-triangle' %}<span>Parollar faqat hozir ko‘rinadi — nusxalab oling.</span></div>{% endif %}{% endblock %}

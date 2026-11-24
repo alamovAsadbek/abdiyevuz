@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Qo‘llanma qo‘shish{% endblock %}{% block h1 %}Qo‘llanma qo‘shish{% endblock %}
+{% block content %}<div class="c p"><form method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Sarlavha" name="title" ph="Masalan: Reaksiya tenglamalarini tenglash" wide=1 req=1 %}
+<div class="f"><span>Kategoriya</span>{% include "partials/select.html" with name="category" options=cat_opts value="Amaliy" %}</div>
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Matn</div><div data-editor="Qo‘llanma matnini yozing…" data-name="body"></div></div>
+<label class="f" style="grid-column:1/-1"><span>Fayllar (PDF, rasm)</span><input type="file" name="files" multiple placeholder="Fayllarni tanlang"></label></div>
+<button class="bt mt">{% icon 'save' %} Qo‘shish</button></form></div>{% endblock %}

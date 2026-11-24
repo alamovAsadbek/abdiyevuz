@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Maqola{% endblock %}{% block h1 %}{% if a %}Maqolani tahrirlash{% else %}Yangi maqola{% endif %}{% endblock %}
+{% block content %}<div class="c p"><form method="post" enctype="multipart/form-data">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Sarlavha" name="title" v=a.title ph="Maqola sarlavhasi" wide=1 req=1 %}
+{% include "partials/f.html" with label="Qisqa tavsif" name="summary" v=a.summary ph="Ro‘yxatda ko‘rinadigan bir-ikki jumla" wide=1 %}
+<label class="f" style="grid-column:1/-1"><span>Muqova rasmi{% if a.cover %} (mavjud — yangisini tanlasangiz almashadi){% endif %}</span><input type="file" name="cover" accept="image/*" placeholder="Rasm tanlang"></label>
+{% if a.cover %}{% include "partials/check.html" with name="remove_cover" title="Muqovani o‘chirish" %}{% endif %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Maqola matni</div><div data-editor="Maqola matnini yozing…" data-name="body" data-init="{{ body_json }}"></div></div>
+{% include "partials/check.html" with name="is_active" on=active title="Aktiv (saytda ko‘rinadi)" desc="Noaktiv maqolani faqat boshqaruvchilar ko‘radi" %}</div>
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endblock %}

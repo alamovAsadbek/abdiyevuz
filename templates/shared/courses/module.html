@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ m.title }}{% endblock %}{% block h1 %}Modul{% endblock %}
+{% block actions %}{% if mg %}<a class="ab" href="{% url 'lesson_new' m.pk %}">{% icon 'plus' %}<span>Dars qo‘shish</span></a><a class="ab s" href="{% url 'module_edit' m.pk %}">{% icon 'edit-2' %}<span>Tahrirlash</span></a><button class="ab s" data-post="{% url 'module_toggle' m.pk %}" data-confirm="Modul holati o‘zgartirilsinmi?">{% icon 'power' %}<span>{% if m.is_active %}Noaktiv{% else %}Aktiv{% endif %}</span></button><button class="ab x" data-post="{% url 'module_delete' m.pk %}" data-confirm="Modul o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+{% block content %}
+<section class="chero" style="grid-template-columns:1fr auto"><div class="chb"><div class="crumb"><a href="{% url 'courses' %}">Kurslar</a>{% icon 'chevron-right' %}<a href="{% url 'course_detail' c.pk %}">{{ c.title }}</a>{% icon 'chevron-right' %}<span>{{ m.title }}</span></div>
+<div class="row chtags"><span class="chip2">{% icon 'play-circle' %}{{ rows|length }} dars</span>{% if not m.is_active %}<span class="chip2 x">{% icon 'eye-off' %}Noaktiv</span>{% endif %}{% if ok %}<span class="chip2 ok">{% icon 'check-circle' %}Ochiq</span>{% endif %}</div>
+<h2>{{ m.title }}</h2>{% if m.description %}<p class="chd">{{ m.description }}</p>{% endif %}</div>
+<aside class="chs"><div class="chsl">Narxi</div><div class="chpr">{{ m.price|money }}</div></aside></section>
+{% if can_buy %}<div class="c p" style="margin-bottom:14px"><div class="row"><b class="sp">Bu modul pullik — {{ m.price|money }}</b><button class="bt" data-post="{% url 'buy_request' %}" data-fields='{"course": {{ c.pk }}, "module": {{ m.pk }}, "next": "{{ request.path }}"}' data-confirm="Sotib olish so‘rovi o‘qituvchiga yuborilsinmi?">{% icon 'shopping-cart' %} Sotib olish so‘rovi</button></div></div>{% endif %}
+<div class="c p lsbox"><div class="row" style="margin-bottom:6px"><h3 class="sp">{% icon 'list' %} Darslar ro‘yxati</h3></div>{% include "partials/lesson_list.html" %}</div>
+{% if mg and not rows %}<div class="c p" style="text-align:center;padding:30px"><a class="bt" href="{% url 'lesson_new' m.pk %}">{% icon 'plus' %} Birinchi video darsni qo‘shish</a></div>{% endif %}
+{% endblock %}

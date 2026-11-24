@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Yangi kurs{% endblock %}{% block h1 %}Yangi kurs{% endblock %}
+{% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Kurs nomi" name="title" v=d.title ph="Masalan: Kimyo asoslari" wide=1 req=1 %}
+{% include "partials/f.html" with label="Tavsif" name="description" v=d.description type="textarea" ph="Kurs haqida qisqacha" wide=1 %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Kurs turi</div>{% include "partials/seg.html" with name="is_modular" options=kinds value="0" %}</div>
+<div data-when="is_modular=0">{% include "partials/f.html" with label="Narxi (0 = bepul)" name="price" type="number" v=d.price ph="0" min0=1 %}</div>
+{% include "partials/check.html" with name="sequential" on=1 title="Ketma-ket ko‘rish" desc="Keyingi dars avvalgisi tugagach ochiladi" %}</div>
+<div class="warn">{% icon 'info' %}<span>Kurs yaratilgach, kurs sahifasidan <b>modul</b> (modulli kurs) yoki <b>video dars</b> (modulsiz kurs) qo‘shasiz.</span></div>
+<button class="bt mt">{% icon 'save' %} Kursni yaratish</button></form></div>{% endblock %}

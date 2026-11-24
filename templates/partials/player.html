@@ -1,0 +1,9 @@
+{% load ui %}<div class="vw">
+{% if l.video_kind == 'file' %}
+ {% if l.hls_status == 'ready' %}<div class="vp" data-hls="{% url 'stream_playlist' l.pk %}"><video playsinline controlsList="nodownload noremoteplayback" disablePictureInPicture></video><div class="vc"><button type="button" data-k="pp"><i data-feather="play"></i></button><input type="range" min="0" max="1000" value="0" aria-label="Video"><span class="vt">0:00 / 0:00</span><button type="button" data-k="sp">1×</button><button type="button" data-k="fs"><i data-feather="maximize"></i></button></div></div>
+ {% else %}<div class="vid">{% if l.hls_status == 'failed' %}<span>Video qayta ishlashda xatolik{% if mg %}: {{ l.hls_error }}{% endif %}</span>{% else %}<span>Video tayyorlanmoqda (siqish va shifrlash)… birozdan so‘ng yangilang</span>{% endif %}</div>{% endif %}
+{% elif l.video_kind == 'link' and direct %}<div class="vp"><video src="{{ l.video_url }}" controls controlsList="nodownload" disablePictureInPicture playsinline></video></div>
+{% elif l.video_kind == 'link' or l.video_kind == 'iframe' %}<div class="vid"><iframe src="{{ embed }}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe></div>
+{% else %}<div class="vid">{% icon 'video-off' %}<b>Video qo‘shilmagan</b></div>{% endif %}
+<div class="wm2">{% for i in "1234567890123456" %}<span>{{ request.user.full_name|default:"MEHMON" }}</span>{% endfor %}</div>
+<div class="wm">{{ request.user.full_name|default:"MEHMON" }} · {{ request.user.uid }}</div></div>

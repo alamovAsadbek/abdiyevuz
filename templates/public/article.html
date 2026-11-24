@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ a.title }}{% endblock %}{% block h1 %}Maqola{% endblock %}
+{% block actions %}{% if mg %}<a class="ab" href="{% url 'article_edit' a.pk %}">{% icon 'edit-2' %}<span>Tahrirlash</span></a><button class="ab s" data-post="{% url 'article_toggle' a.pk %}" data-confirm="Maqola holati o‘zgartirilsinmi?" data-next="{{ request.path }}">{% icon 'power' %}<span>{% if a.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</span></button><button class="ab x" data-post="{% url 'article_delete' a.pk %}" data-confirm="Maqola o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+{% block content %}
+<article class="c" style="overflow:hidden;padding:0">
+{% if a.cover %}<img src="{% url 'article_cover' a.pk %}" alt="" style="width:100%;max-height:380px;object-fit:cover;display:block">{% endif %}
+<div style="padding:22px"><div class="row">{% if not a.is_active %}{% tag 'Noaktiv' 'x' %}{% endif %}<span class="m">{{ a.created|dtm }} · {{ a.author.full_name|default:"Admin" }} · {{ a.views }} ko‘rish</span></div>
+<h1 style="margin:10px 0 8px">{{ a.title }}</h1>{% if a.summary %}<p class="m" style="margin-bottom:14px">{{ a.summary }}</p>{% endif %}
+<div class="art-body">{{ a.body|safe }}</div></div></article>
+<div class="row mt"><a class="bt s" href="{% url 'home' %}">{% icon 'arrow-left' %} Barcha maqolalar</a><a class="bt" href="{% url 'tests' %}">{% icon 'check-square' %} Testlar</a><a class="bt s" href="{% url 'courses' %}">{% icon 'play-circle' %} Kurslar</a></div>
+{% endblock %}

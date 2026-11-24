@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}{{ g.name }}{% endblock %}{% block h1 %}{{ g.name }}{% endblock %}
+{% block actions %}{% if can %}<a class="ab" href="{% url 'lesson_new' module.pk %}">{% icon 'video' %}<span>Videodars qo‘shish</span></a>{% endif %}{% endblock %}
+{% block content %}
+<div class="row" style="margin-bottom:14px">{% tag g.kind_label %} {% if g.is_active %}{% tag 'Aktiv' 'f' %}{% else %}{% tag 'Noaktiv' 'x' %}{% endif %}<span class="m">{{ g.description }}</span></div>
+{% include "partials/tabs.html" %}
+{% if tab == "vid" %}
+{% for r in lessons %}<div class="ls hv" data-href="{% url 'lesson_detail' r.l.pk %}"><span class="ic" style="background:var(--p2)">{% icon 'play-circle' %}</span><span class="sp"><b>{{ r.l.title }}</b><div class="m">{{ r.l.created|dfmt }} · {{ r.seen }} talaba ko‘rgan</div></span>{% tag r.l.get_video_kind_display %}</div>{% empty %}<div class="c p m">Hali videodars yo‘q</div>{% endfor %}
+{% elif tab == "mem" %}
+{% if can %}<div class="row" style="margin-bottom:12px"><button class="bt" data-picker data-src="free-json" data-url="{% url 'group_members' g.pk %}" data-key="add" data-multi="1" data-title="Talabalarni tanlang" data-btn="Qo‘shish">{% icon 'user-plus' %} Talaba qo‘shish</button></div><script type="application/json" id="free-json">{{ free|safe }}</script>{% endif %}
+{% for s in members %}<div class="ls"><div class="av">{{ s.initials }}</div><span class="sp"><b>{{ s.full_name }}</b><div class="m">{{ s.uid }} · {{ s.phone|default:"telefon yo‘q" }}</div></span>{% if can %}<button class="ib2 x" title="Chiqarish" data-post="{% url 'group_members' g.pk %}" data-confirm="{{ s.full_name }} guruhdan chiqarilsinmi?" data-fields='{"remove": {{ s.pk }}}'>{% icon 'user-x' %}</button>{% endif %}</div>{% empty %}<div class="c p m">Guruhda talaba yo‘q</div>{% endfor %}
+{% elif tab == "set" %}
+<div class="c p"><form method="post" action="{% url 'group_edit' g.pk %}">{% csrf_token %}<div class="fgrid">
+{% include "partials/f.html" with label="Guruh nomi" name="name" v=g.name ph="Guruh nomi" wide=1 req=1 %}
+<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Turi</div>{% include "partials/seg.html" with name="kind" options=kinds value=g.kind %}</div>
+{% include "partials/f.html" with label="Tavsif / dars jadvali" name="description" v=g.description type="textarea" ph="Dars kunlari va vaqti" wide=1 %}
+{% include "partials/check.html" with name="is_active" on=g.is_active title="Aktiv guruh" %}</div>
+<div class="row mt"><button class="bt">{% icon 'save' %} Saqlash</button>{% if can %}<button type="button" class="bt d" data-post="{% url 'group_delete' g.pk %}" data-confirm="Guruh o‘chirilsinmi?">{% icon 'trash-2' %} O‘chirish</button>{% endif %}</div></form></div>
+{% elif tab == "tch" %}
+<div class="row" style="margin-bottom:12px"><button class="bt" data-picker data-src="ass-json" data-url="{% url 'group_assistants' g.pk %}" data-key="add" data-multi="1" data-title="Yordamchi o‘qituvchilar" data-btn="Biriktirish">{% icon 'user-plus' %} Yordamchi biriktirish</button></div><script type="application/json" id="ass-json">{{ all_ass|safe }}</script>
+{% for a in assistants %}<div class="ls"><div class="av">{{ a.initials }}</div><span class="sp"><b>{{ a.full_name }}</b><div class="m">{{ a.uid }}</div></span></div>{% empty %}<div class="c p m">Yordamchi biriktirilmagan</div>{% endfor %}
+{% elif tab == "stat" %}
+<div class="gr g4 a">{% include "partials/stat.html" with i="users" l="Talabalar" n=n c="p1" %}{% include "partials/stat.html" with i="video" l="Videodarslar" n=nl c="p2" %}</div>
+<div class="c tw mt"><table><tr><th>Dars</th><th>Ko‘rgan</th><th>Vazifa topshirgan</th></tr>{% for r in lrows %}<tr><td>{{ r.l.title }}</td><td>{{ r.seen }} / {{ n }}</td><td>{% if r.has_tasks %}{{ r.sub }} / {{ n }}{% else %}—{% endif %}</td></tr>{% endfor %}</table></div>
+<div class="c tw mt"><table><tr><th>Talaba</th><th>Ko‘rilgan darslar</th><th>Topshirgan vazifalar</th><th>Ball</th></tr>{% for r in srows %}<tr><td>{{ r.u.full_name }}</td><td>{{ r.seen }} / {{ nl }}</td><td>{{ r.sub }}</td><td>{{ r.pts }}</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% endblock %}

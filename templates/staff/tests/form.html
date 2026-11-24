@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load ui %}
+{% block title %}Test{% endblock %}{% block h1 %}{% if t %}Testni tahrirlash{% else %}Yangi test{% endif %}{% endblock %}
+{% block content %}
+<script type="application/json" id="test-init">{{ init|safe }}</script>
+<form method="post" enctype="multipart/form-data" data-test-form data-edit="{% if t %}1{% else %}0{% endif %}" data-mode="{{ t.mode }}">{% csrf_token %}
+<input type="hidden" name="payload"><input type="hidden" name="keys"><input type="hidden" name="kopts" value="4">
+<div class="c p"><div class="fgrid">
+{% include "partials/f.html" with label="Test nomi" name="title" v=t.title ph="Masalan: Oksidlar" wide=1 req=1 %}
+{% if t %}<input type="hidden" name="mode" value="{{ t.mode }}">{% else %}<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Test turi</div>{% include "partials/seg.html" with name="mode" options=mode_opts value="manual" %}</div>{% endif %}
+{% include "partials/f.html" with label="Boshlanish sanasi va vaqti" name="start_at" type="datetime-local" v=t.start_at|dtl ph="Boshlanish vaqti" req=1 %}
+{% include "partials/f.html" with label="Tugash sanasi va vaqti" name="end_at" type="datetime-local" v=t.end_at|dtl ph="Tugash vaqti" req=1 %}
+{% include "partials/f.html" with label="Narxi (0 = bepul)" name="price" type="number" v=t.price|default:0 ph="0" min0=1 %}
+{% include "partials/f.html" with label="Eng ko‘p urinish (0 = cheksiz)" name="max_attempts" type="number" v=t.max_attempts|default:0 ph="0" min0=1 %}
+{% include "partials/check.html" with name="is_active" on=active title="Aktiv test" %}
+{% include "partials/check.html" with name="allow_retake" on=t.allow_retake title="Qayta ishlashga ruxsat" %}
+{% include "partials/check.html" with name="allow_guest" on=guest title="Ro‘yxatdan o‘tmasdan ishlash mumkin" desc="Natija saqlanmaydi" %}</div></div>
+{% if not t or t.mode == "manual" %}<div data-when="mode=manual"{% if t %}{% endif %}><h3 style="margin:18px 0 0">Savollar</h3><div id="qs"></div><button type="button" class="bt s mt" data-addq>{% icon 'plus' %} Savol qo‘shish</button></div>{% endif %}
+{% if not t or t.mode == "file" %}<div data-when="mode=file"><div class="c p mt"><h3 style="margin-bottom:10px">Test fayli va kalitlar</h3>
+<label class="f"><span>Test fayli (PDF yoki rasm){% if t.file %} — mavjud: {{ t.file_name }}{% endif %}</span><input type="file" name="testfile" placeholder="Test faylini tanlang"></label>
+<div class="row mt"><label class="f"><span>Savollar soni</span><input id="kn" type="number" min="1" max="200" value="20" placeholder="20"></label><label class="f"><span>Variantlar soni</span><input id="ko" type="number" min="2" max="8" value="4" placeholder="4"></label><button type="button" class="bt s" data-keygen>{% icon 'grid' %} Kalit varaqasini yaratish</button><button type="button" class="bt s" data-keyadd>{% icon 'plus' %} Savol qo‘shish</button></div>
+<label class="f mt"><span>Tezkor kiritish (masalan: 1A 2C 3B yoki ACBD…)</span><textarea id="kq" placeholder="1A 2C 3B 4D" style="min-height:60px"></textarea></label><button type="button" class="bt s mt" data-keyfill>{% icon 'zap' %} Kalitlarni qo‘llash</button>
+<div id="kg" class="mt"></div></div></div>{% endif %}
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form>{% endblock %}
