@@ -20,7 +20,6 @@ urlpatterns = [
     path("staff/users/<int:pk>/block/", v.user_block, name="user_block"),
     path("staff/users/<int:pk>/delete/", v.user_delete, name="user_delete"),
     path("staff/users/<int:pk>/perm/", v.user_perm, name="user_perm"),
-    path("settings/roles/<str:role>/", v.role_perms, name="role_perms"),
     path("staff/users/<int:pk>/groups/", g.user_groups, name="user_groups"),
     path("groups/", g.groups, name="groups"),
     path("groups/new/", g.group_new, name="group_new"),

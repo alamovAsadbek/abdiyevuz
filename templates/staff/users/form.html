@@ -7,9 +7,5 @@
 <div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options value=d.role|default:"student" %}</div>
 <div class="f"><span>Guruh</span>{% include "partials/select.html" with name="group" options=group_options value="" %}</div>
 <label class="f" style="grid-column:1/-1"><span>Parol</span><div class="row" style="flex-wrap:nowrap"><input id="pw" name="password" value="{{ pw }}" placeholder="Kamida 6 ta belgi" required><button type="button" class="ib2" data-regen="#pw" title="Yangi parol">{% icon 'refresh-cw' %}</button><button type="button" class="ib2" data-copy="#pw" title="Nusxalash">{% icon 'copy' %}</button></div></label>
-{% if request.user.is_main %}{% for role, rows in matrices %}<div data-when="role={{ role }}" style="grid-column:1/-1" class="mt">
-<div class="row" style="margin-bottom:8px"><h3 class="sp">{% icon 'key' %} Ruxsatlar — {% if role == 'assistant' %}yordamchi o‘qituvchi{% else %}talaba{% endif %}</h3>
-<label class="op" style="margin:0"><input type="checkbox" name="custom_perms" value="1" data-perm-custom checked><span><b>Hozir belgilash</b></span></label></div>
-<div class="rolehint">{% icon 'info' %}<span>Rol standarti belgilab qo‘yilgan. <b>Ko‘rish</b> berilmagan bo‘lim foydalanuvchiga umuman ko‘rinmaydi, faqat <b>Ko‘rish</b> berilsa — faqat o‘qish uchun ochiladi. {% if role == 'student' %}Talabaga faqat ko‘rish ruxsati beriladi.{% else %}Qo‘shish / tahrirlash / o‘chirish — CRUD amallari.{% endif %}</span></div>
-{% include "partials/perm_matrix.html" with rows=rows prefix="p_"|add:role %}</div>{% endfor %}{% endif %}
+{% if request.user.is_main %}<div data-when="role=assistant" style="grid-column:1/-1"><div class="m" style="margin:6px 0">Yordamchi ruxsatlari (keyin foydalanuvchi sahifasi → Ruxsatlar tabida o‘zgartirish mumkin)</div>{% for code, label, ic in perm_list %}<label class="op"><input type="checkbox" name="perm" value="{{ code }}"><span>{% icon ic %} <b>{{ label }}</b></span></label>{% endfor %}</div>{% endif %}
 </div><button class="bt mt">{% icon 'user-plus' %} Qo‘shish</button></form></div>{% endblock %}

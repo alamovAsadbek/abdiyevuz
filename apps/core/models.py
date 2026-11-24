@@ -53,10 +53,6 @@ class SiteSettingsModel(models.Model):
     """Umumiy sozlamalar (yagona yozuv)."""
     articles_public = models.BooleanField("Maqolalarni login qilmasdan ko‘rish mumkin", default=True)
     registration_open = models.BooleanField("Ro‘yxatdan o‘tish ochiq", default=True)
-    protect_students = models.BooleanField("Talabalar uchun ekran himoyasi", default=True)
-    protect_assistants = models.BooleanField("Yordamchi o‘qituvchilar uchun ekran himoyasi", default=False)
-    protect_watermark = models.BooleanField("Butun sahifada suv belgisi (ism + ID)", default=True)
-    role_perms = models.JSONField("Rollar bo‘yicha standart ruxsatlar", default=dict, blank=True)
 
     class Meta:
         verbose_name = "Umumiy sozlama"

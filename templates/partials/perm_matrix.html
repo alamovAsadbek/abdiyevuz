@@ -1,9 +1,0 @@
-{% load ui %}{# rows: permissions.matrix(); live: url bo'lsa har bir katak darhol saqlanadi; prefix: forma maydoni prefiksi #}
-<div class="pmx" {% if live %}data-perm-live="{{ live }}"{% endif %}>
-{% for r in rows %}<div class="pmr" data-code="{{ r.code }}" data-level="{{ r.level }}">
-  <span class="ic pmi">{% icon r.icon %}</span>
-  <div class="sp pmt"><b>{{ r.label }}</b><div class="m">{{ r.desc }}</div></div>
-  <span class="tag pml"></span>
-  <div class="pmc">{% for c in r.cells %}<label class="pmk {% if c.a == 'view' %}v{% endif %}{% if c.a == 'delete' %} d{% endif %}" title="{{ c.label }}"><input type="checkbox" {% if prefix %}name="{{ prefix }}.{{ r.code }}"{% endif %} value="{{ c.a }}" data-act="{{ c.a }}" {% if c.on %}checked{% endif %}><span>{% icon c.icon %}{{ c.label }}</span></label>{% endfor %}</div>
-</div>{% endfor %}
-</div>

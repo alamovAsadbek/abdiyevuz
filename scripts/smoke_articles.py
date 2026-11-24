@@ -52,8 +52,7 @@ h=M.get(f"/lessons/{l.pk}/").content.decode(); ok("lesson page: info block under
 for u in ["/courses/new/","/tests/new/","/staff/users/new/","/groups/new/","/guides/new/","/articles/new/",f"/lessons/{l.pk}/materials/new/",f"/modules/{m.pk}/lessons/new/",f"/lessons/{l.pk}/tasks/new/","/staff/messages/new/"]:
     ok("no max-width on "+u, "max-width:" not in re.sub(r"<script.*?</script>","",M.get(u).content.decode(),flags=re.S).split('class="pg a"')[1])
 # perms at user creation
-r=M.post("/staff/users/new/",{"full_name":"Yangi Yordamchi","username":"yyy","password":"Parol#123","role":"assistant","custom_perms":"1",
-       "p_assistant.users":["view","add"],"p_assistant.articles":["add","edit","delete"],"p_assistant.bad":["view"]}); u=UserModel.objects.get(username="yyy")
-ok("permissions chosen while creating assistant", u.grants.get("articles")==["view","add","edit","delete"] and u.grants.get("users")==["view","add"] and "bad" not in u.grants and not u.can("users","delete"))
-ok("Ruxsatlar tab renders for assistant", "Maqolalar" in M.get(f"/staff/users/{u.pk}/?tab=perm").content.decode())
+r=M.post("/staff/users/new/",{"full_name":"Yangi Yordamchi","username":"yyy","password":"Parol#123","role":"assistant","perm":["users","articles","bad"]}); u=UserModel.objects.get(username="yyy")
+ok("permissions chosen while creating assistant", u.perms==["articles","users"])
+ok("Ruxsatlar tab renders for assistant", "Maqolalarni boshqarish" in M.get(f"/staff/users/{u.pk}/?tab=perm").content.decode())
 ok("admin has new models", Client().get("/admin/login/").status_code==200)

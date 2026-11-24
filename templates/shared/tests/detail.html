@@ -4,7 +4,7 @@
 <button class="ab s" data-post="{% url 'test_time' t.pk 'start' %}" data-confirm="Test hozir boshlansinmi?">{% icon 'play' %}<span>Hozir boshlash</span></button>
 <button class="ab s" data-post="{% url 'test_time' t.pk 'end' %}" data-confirm="Test hozir tugatilsinmi?">{% icon 'square' %}<span>Tugatish</span></button>
 <button class="ab s" data-post="{% url 'test_toggle' t.pk %}" data-confirm="Test holati o‘zgartirilsinmi?">{% icon 'power' %}<span>{% if t.is_active %}Noaktiv{% else %}Aktiv{% endif %}</span></button>
-{% endif %}{% if request.user|can_do:'tests.delete' %}<button class="ab x" data-post="{% url 'test_delete' t.pk %}" data-confirm="Test o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+<button class="ab x" data-post="{% url 'test_delete' t.pk %}" data-confirm="Test o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
 {% block content %}
 <div data-live-test="{{ t.pk }}">
 <div class="c p" style="margin-bottom:14px"><div class="row">{% tag label.0 label.1 %}{% tag n|stringformat:'s'|add:' ta savol' %}{% tag t.price|money t.price|yesno:"x,f" %}{% if t.allow_retake %}{% tag 'Qayta ishlash mumkin' %}{% endif %}</div>

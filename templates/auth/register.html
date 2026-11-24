@@ -1,14 +1,15 @@
-{% extends "auth/base_auth.html" %}{% load ui %}
-{% block title %}Ro‘yxatdan o‘tish{% endblock %}{% block side_h %}Bugun boshlang — ertaga natija{% endblock %}
+{% extends "base.html" %}{% load ui %}
+{% block title %}Ro‘yxatdan o‘tish{% endblock %}{% block back %}{% endblock %}{% block h1 %}Ro‘yxatdan o‘tish{% endblock %}
 {% block content %}
+<div class="c p" style="max-width:520px;margin:20px auto">
 <h2 style="margin-bottom:4px">Yangi hisob</h2><p class="m" style="margin-bottom:16px">Bir daqiqada ro‘yxatdan o‘ting</p>
 {% if error %}<div class="errbox">{{ error }}</div>{% endif %}
-<form method="post">{% csrf_token %}<div class="fgrid" style="grid-template-columns:1fr 1fr">
+<form method="post">{% csrf_token %}<div class="fgrid">
 {% include "partials/f.html" with label="Ism familiya" name="full_name" v=full_name ph="Masalan: Ali Valiyev" wide=1 req=1 %}
 {% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=username ph="Faqat lotin harf va raqam" req=1 ac="username" %}
 {% include "partials/f.html" with label="Telefon raqami" name="phone" v=phone ph="+998 90 123 45 67" phone=1 %}
 {% include "partials/f.html" with label="Parol" name="password" type="password" ph="Kamida 6 ta belgi" req=1 ac="new-password" %}
 {% include "partials/f.html" with label="Parolni takrorlang" name="password2" type="password" ph="Parolni qayta kiriting" req=1 ac="new-password" %}
 </div><button class="bt mt" style="width:100%">{% icon 'user-plus' %} Ro‘yxatdan o‘tish</button></form>
-<p class="m mt" style="text-align:center">Hisobingiz bormi? <a href="{% url 'login' %}"><b>Kirish</b></a></p>
+<p class="m mt" style="text-align:center">Hisobingiz bormi? <a href="{% url 'login' %}"><b>Kirish</b></a></p></div>
 {% endblock %}

@@ -1,9 +1,9 @@
 {% extends "base.html" %}{% load ui %}
 {% block title %}{{ u.full_name }}{% endblock %}{% block h1 %}{{ u.full_name }}{% endblock %}
-{% block actions %}{% if request.user.is_main and not u.is_main %}<a class="ab s" href="?tab=perm">{% icon 'key' %}<span>Ruxsatlar</span></a>{% endif %}{% if can_gift %}<button class="ab" data-gift-user="{{ u.pk }}">{% icon 'gift' %}<span>Kurs berish</span></button>{% endif %}
+{% block actions %}{% if can_gift %}<button class="ab" data-gift-user="{{ u.pk }}">{% icon 'gift' %}<span>Kurs berish</span></button>{% endif %}
 {% if request.user|can:'notify' %}<a class="ab s" href="{% url 'message_new' %}?uid={{ u.pk }}">{% icon 'send' %}<span>Xabar</span></a>{% endif %}
-{% if request.user|can_do:'users.edit' %}<button class="ab s" data-post="{% url 'user_block' u.pk %}" data-confirm="{% if u.is_blocked %}Blokdan chiqarilsinmi?{% else %}Foydalanuvchi bloklansinmi?{% endif %}" data-next="{{ request.get_full_path }}">{% icon 'slash' %}<span>{% if u.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}</span></button>{% endif %}
-{% if request.user|can_do:'users.delete' %}<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+<button class="ab s" data-post="{% url 'user_block' u.pk %}" data-confirm="{% if u.is_blocked %}Blokdan chiqarilsinmi?{% else %}Foydalanuvchi bloklansinmi?{% endif %}" data-next="{{ request.get_full_path }}">{% icon 'slash' %}<span>{% if u.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}</span></button>
+<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endblock %}
 {% block content %}
 <div class="c p" style="margin-bottom:14px"><div class="row" style="gap:16px"><div class="av" style="width:56px;height:56px;font-size:20px">{{ u.initials }}</div><div class="sp"><h2>{{ u.full_name }}</h2><div class="m">@{{ u.username }} · {{ u.phone|default:"telefon yo‘q" }}</div></div>{% tag u.get_role_display %}{% tag u.uid %}{% if u.is_blocked %}{% tag 'Bloklangan' 'x' %}{% endif %}{% if u.is_student %}{% tag u.points|stringformat:'s'|add:' ball' 'f' %}{% endif %}</div></div>
 {% include "partials/tabs.html" %}
@@ -32,15 +32,7 @@
 {% elif tab == "tarix" %}
 {% for e in events %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'clock' %}</span><span class="sp"><b>{{ e.label.0 }}{% if e.course %} — {{ e.course.title }}{% endif %}{% if e.group %} — {{ e.group.name }}{% endif %}</b><div class="m">{{ e.created|dtm }}{% if e.mods %} · {{ e.mods }}{% endif %}{% if e.actor %} · {{ e.actor.full_name }}{% endif %}</div></span></div>{% empty %}<div class="c p m">Tarix bo‘sh</div>{% endfor %}
 {% elif tab == "perm" %}
-<div class="c p"><div class="row" style="margin-bottom:6px"><div class="sp"><h3>{% icon 'key' %} {{ u.get_role_display }} ruxsatlari</h3><p class="m">Har bir katak darhol saqlanadi va serverda tekshiriladi. Ruxsat berilmagan bo‘lim rolga qarab faqat o‘qish uchun yoki umuman ko‘rinmaydi.</p></div></div>
-<div class="pmsum"><div class="f"><b data-pm-n="full">{{ n_full }}</b><span>To‘liq ruxsat</span></div><div><b data-pm-n="part">{{ n_part }}</b><span>Qisman</span></div><div><b data-pm-n="read">{{ n_read }}</b><span>Faqat ko‘rish</span></div><div class="h"><b data-pm-n="hidden">{{ n_hidden }}</b><span>Ko‘rinmaydi</span></div></div>
-{% if legacy %}<div class="rolehint">{% icon 'info' %}<span>Bu foydalanuvchiga hali alohida ruxsat saqlanmagan — <b>rol standarti</b> amal qilmoqda. Biror katakni o‘zgartirsangiz, ruxsatlar shaxsiy bo‘lib saqlanadi.</span></div>{% endif %}
-<div class="pmbar">{% if u.is_assistant %}<button class="bt s" data-perm-bulk="all">{% icon 'check-square' %} Hammasiga to‘liq</button>{% endif %}<button class="bt s" data-perm-bulk="read">{% icon 'eye' %} Hammasi faqat ko‘rish</button><button class="bt s" data-perm-bulk="none">{% icon 'eye-off' %} Hammasini yashirish</button><div class="sp"></div><button class="bt s" data-perm-reset>{% icon 'rotate-ccw' %} Rol standartiga qaytarish</button></div>
-{% include "partials/perm_matrix.html" with rows=prows live=perm_url %}</div>
-{% elif tab == "xavf" %}
-<div class="row" style="margin-bottom:12px"><a class="bt s" href="{% url 'security' %}?uid={{ u.pk }}">{% icon 'shield' %} Xavfsizlik sahifasida ochish</a></div>
-{% for r in incidents %}<a class="ls hv" href="{% url 'security_detail' r.pk %}"><span class="ic" style="background:var(--p3);color:var(--dg)">{% icon r.icon %}</span><span class="sp"><b>{{ r.label }}</b><div class="m">{{ r.last_at|dtm }} · {{ r.content|default:r.page_title|default:r.url }}{% if r.count > 1 %} · ×{{ r.count }}{% endif %}</div></span>{% tag r.sev_label r.sev_tag %}{% if r.reviewed %}{% tag 'Ko‘rib chiqilgan' 'f' %}{% else %}{% tag 'Yangi' 'x' %}{% endif %}</a>{% empty %}<div class="c p m">Xavfsizlik hodisalari yo‘q</div>{% endfor %}
-{% elif tab == "log" %}
-<div class="c tw"><table><tr><th>Vaqt</th><th>Kim</th><th>Amal</th><th>Obyekt</th><th>Natija</th><th>IP</th></tr>{% for r in alogs %}<tr class="k" data-href="{% url 'log_detail' r.pk %}"><td>{{ r.created|dtm }}</td><td>{{ r.actor_name }}</td><td>{{ r.label }}</td><td>{{ r.obj_label|default:"—" }}</td><td>{% tag r.result_tag.0 r.result_tag.1 %}</td><td>{{ r.ip|default:"—" }}</td></tr>{% empty %}<tr><td colspan="6" class="m">Jurnal bo‘sh</td></tr>{% endfor %}</table></div>
+<div class="c p"><h3 style="margin-bottom:6px">Yordamchi ruxsatlari</h3><p class="m">Ruxsatlar faqat serverda tekshiriladi.</p>
+{% for code, label, ic in perm_list %}<label class="op"><input type="checkbox" data-perm-toggle="{% url 'user_perm' u.pk %}" data-code="{{ code }}" {% if code in u.perms %}checked{% endif %}><span>{% icon ic %} <b>{{ label }}</b></span></label>{% endfor %}</div>
 {% endif %}
 {% endblock %}

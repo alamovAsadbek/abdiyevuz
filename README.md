@@ -46,31 +46,6 @@ Barcha modellar `...Model` nomi bilan (UserModel, TestModel …), hammasi `/admi
 - Kurs yaratish endi ikki bosqichli: avval kurs (nom, turi), so‘ng kurs sahifasidan modul yoki video dars qo‘shiladi.
 - Dars sahifasida video ostida dars ma’lumotlari (tavsif, ko‘rishlar, qo‘llanmalar, vazifalar, davomiylik) chiqadi.
 
-## Ruxsatlar: bo‘lim × amal (yangi)
-- `apps/accounts/permissions.py`: har bir bo‘lim (maqolalar, kurslar, testlar, vazifalar, guruhlar, qo‘llanmalar, uchrashuvlar, statistika,
-  foydalanuvchilar, kurs berish, xabarnomalar, xato xabarlari, faollik, xavfsizlik, jurnal) uchun **Ko‘rish / Qo‘shish / Tahrirlash / O‘chirish**.
-- **Ko‘rish** berilmagan bo‘lim menyuda ham, URL orqali ham umuman ochilmaydi; faqat ko‘rish — read-only (tugmalar yashiriladi, server ham rad etadi).
-- Talabaga faqat «Ko‘rish» (masalan statistika yoki uchrashuvlarni butunlay yashirish mumkin). Asosiy o‘qituvchi — hamma narsa.
-- Qayerda beriladi: foydalanuvchi yaratishda (rolga qarab matritsa), foydalanuvchi sahifasi → **Ruxsatlar** tabi (har katak darhol saqlanadi),
-  **Sozlamalar → Rol ruxsatlari** (rol standarti; xohlasangiz mavjud foydalanuvchilarga ham qo‘llanadi). Rol o‘zgarsa — yangi rol standarti qo‘llanadi.
-- Markaziy tekshiruv: `SectionAccessMiddleware` (url nomi → bo‘lim/amal jadvali `ROUTES`). Eski ro‘yxat ko‘rinishidagi ruxsatlar avtomatik moslashtiriladi.
-
-## Ekran himoyasi va xavfsizlik hodisalari (yangi)
-- `static/js/guard.js` (Sozlamalar → Himoya: talabalar / yordamchilar uchun yoqiladi): PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5,
-  Win+Alt+R / Win+G, Ctrl+P/S/U, DevTools, nusxalash, o‘ng tugma — bloklanadi, kontent darhol yashiriladi, video to‘xtaydi;
-  oynadan chiqilganda sahifa xiralashadi; butun sahifada ism + ID + sana suv belgisi.
-- Har bir urinish `/security/` sahifasiga yoziladi (takrorlar birlashtiriladi), yuqori xavfli hodisa haqida asosiy o‘qituvchiga
-  (va talaba guruhidagi «Xavfsizlik» ruxsatli yordamchiga) darhol bildirishnoma boradi. Detail sahifada: qurilma, IP, sahifa, kontent,
-  foydalanuvchining boshqa hodisalari va amallari; choralar — ko‘rib chiqildi, ogohlantirish, bloklash.
-- Ochiq aytaman: telefon kamerasi yoki OBS kabi dasturni hech bir sayt 100% to‘xtata olmaydi — shuning uchun aniqlash + xabar + suv belgisi.
-
-## Tizim jurnali (log) (yangi)
-- `AuditMiddleware`: har bir o‘zgartiruvchi so‘rov, kirish/chiqish (muvaffaqiyatsiz kirish ham), fayl yuklab olish va ruxsatsiz urinishlar
-  bazaga yoziladi → `/staff/logs/` (filtr, qidiruv, detail). Parollar yozilmaydi. Eski yozuvlar `LOG_RETENTION_DAYS` (180) kundan so‘ng o‘chadi.
-- Fayllar: `logs/app.log`, `logs/audit.log`, `logs/security.log`, `logs/error.log` (10 MB dan aylanadi). Papka: `.env` → `LOG_DIR`.
-- Sinov: `python manage.py shell -c "exec(open('scripts/smoke_perms.py', encoding='utf-8').read())"` (seed_demo qilingan **alohida** bazada:
-  `.env` → `SQLITE_PATH=...`).
-
 ## Rollar va ruxsatlar (faqat backendda)
 `apps/core/perms.py`: `@login_required`, `@teacher_required`, `@main_required`, `@student_required`, `@perm_required("users")`.
 Asosiy o‘qituvchi — hammasi. Yordamchi — faqat `UserModel.perms` dagi ruxsatlar (`users, gift, tests, courses, tasks, notify, activity, groups, guides, articles`)

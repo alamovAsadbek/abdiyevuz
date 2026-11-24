@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     "apps.exams.apps.ExamsConfig",
     "apps.notifications.apps.NotificationsConfig",
     "apps.meetings.apps.MeetingsConfig",
-    "apps.security.apps.SecurityConfig",
 ]
 
 AUTH_USER_MODEL = "accounts.UserModel"
@@ -57,8 +56,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.JWTAuthMiddleware",
     "apps.core.middleware.SecurityHeadersMiddleware",
-    "apps.core.middleware.SectionAccessMiddleware",
-    "apps.core.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -85,7 +82,7 @@ if env("POSTGRES_DB"):
         "CONN_MAX_AGE": 60,
     }}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": env("SQLITE_PATH", str(BASE_DIR / "db.sqlite3")),
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",
                              "OPTIONS": {"timeout": 20}}}
 
 if env("REDIS_URL"):
@@ -163,19 +160,6 @@ MEETING_LONG_MINUTES = int(env("MEETING_LONG_MINUTES", "60"))
 MEETING_MAX_PARTICIPANTS = int(env("MEETING_MAX_PARTICIPANTS", "8"))   # mesh: 8 tagacha tavsiya etiladi
 MEETING_EMPTY_END_MINUTES = int(env("MEETING_EMPTY_END_MINUTES", "10"))
 
-# ---- Jurnal (log) fayllari ----
-# logs/app.log — umumiy, logs/audit.log — kim qanday amal bajargani, logs/security.log — skrinshot/ekran yozish urinishlari,
-# logs/error.log — xatolar. Har biri 10 MB dan aylanadi (10 ta nusxa saqlanadi). Bazadagi jurnal: /staff/logs/, /security/
-LOG_DIR = Path(env("LOG_DIR", str(BASE_DIR / "logs")))
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-LOG_RETENTION_DAYS = int(env("LOG_RETENTION_DAYS", "180"))      # bazadagi jurnal yozuvlari shuncha kun saqlanadi
-_rot = lambda name, level="INFO": {"class": "logging.handlers.RotatingFileHandler", "filename": str(LOG_DIR / name),
-                                   "maxBytes": 10 * 1024 * 1024, "backupCount": 10, "encoding": "utf-8", "formatter": "f", "level": level}
 LOGGING = {"version": 1, "disable_existing_loggers": False,
-           "formatters": {"f": {"format": "%(asctime)s %(levelname)-7s %(name)s: %(message)s", "datefmt": "%Y-%m-%d %H:%M:%S"}},
-           "handlers": {"c": {"class": "logging.StreamHandler", "formatter": "f"},
-                        "app": _rot("app.log"), "audit": _rot("audit.log"), "security": _rot("security.log"), "error": _rot("error.log", "ERROR")},
-           "loggers": {"km.audit": {"handlers": ["audit"], "level": "INFO", "propagate": False},
-                       "km.security": {"handlers": ["security", "c"], "level": "INFO", "propagate": False},
-                       "django.request": {"handlers": ["error", "c"], "level": "WARNING", "propagate": False}},
-           "root": {"handlers": ["c", "app", "error"], "level": "INFO"}}
+           "handlers": {"c": {"class": "logging.StreamHandler"}},
+           "root": {"handlers": ["c"], "level": "INFO"}}

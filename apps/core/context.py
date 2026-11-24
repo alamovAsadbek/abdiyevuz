@@ -4,13 +4,11 @@ NAV_ACTIVE = {
     "home": "home", "dashboard": "dashboard", "tests": "tests", "courses": "courses", "login": "login",
     "users": "users", "groups": "groups", "tasks": "tasks", "stats": "stats", "guides": "guides",
     "settings": "settings", "profile": "profile", "reports": "reports", "messages": "messages",
-    "security": "security", "logs": "logs", "meetings": "meetings",
 }
 PREFIX = (("user", "users"), ("test", "tests"), ("attempt", "tests"), ("course", "courses"), ("module", "courses"),
           ("lesson", "courses"), ("material", "courses"), ("group", "groups"), ("task", "tasks"), ("submission", "tasks"),
           ("guide", "guides"), ("message", "messages"), ("report", "reports"), ("notification", "dashboard"),
-          ("run", "tests"), ("gift", "courses"), ("article", "home"), ("site", "settings"), ("meeting", "meetings"),
-          ("security", "security"), ("log", "logs"), ("role", "settings"), ("protect", "settings"))
+          ("run", "tests"), ("gift", "courses"), ("article", "home"), ("site", "settings"), ("meeting", "meetings"))
 
 
 def active_key(name):
@@ -23,26 +21,25 @@ def active_key(name):
 
 
 def build_nav(u):
+    R = reverse
     if not u.is_authenticated:
         return [("home", "file-text", "Maqolalar", "Maqola"), ("tests", "check-square", "Testlar", "Testlar"),
                 ("courses", "play-circle", "Kurslar", "Kurslar"), ("login", "log-in", "Kirish", "Kirish")]
-    V = u.can_view
-    items = [("dashboard", "grid", "Panel", "Panel")]
+    g = ("guides", "book-open", "Qo‘llanma", "Qo‘llanma")
     if u.is_student:
-        cand = [("articles", ("home", "file-text", "Maqolalar", "Maqola")), ("courses", ("courses", "play-circle", "Kurslar", "Kurslar")),
-                ("tests", ("tests", "check-square", "Testlar", "Testlar")), ("meetings", ("meetings", "video", "Uchrashuvlar", "Meeting")),
-                ("groups", ("groups", "layers", "Guruhlarim", "Guruhlar")), ("tasks", ("tasks", "clipboard", "Vazifalarim", "Vazifalar")),
-                ("stats", ("stats", "bar-chart-2", "Statistikam", "Statistika")), ("guides", ("guides", "book-open", "Qo‘llanma", "Qo‘llanma"))]
-    else:
-        cand = [("articles", ("home", "file-text", "Maqolalar", "Maqola")), ("tasks", ("tasks", "clipboard", "Vazifalar", "Vazifalar")),
-                ("users", ("users", "users", "Foydalanuvchilar", "Userlar")), ("groups", ("groups", "layers", "Guruhlar", "Guruhlar")),
-                ("tests", ("tests", "check-square", "Testlar", "Testlar")), ("reports", ("reports", "flag", "Xato xabarlari", "Xabarlar")),
-                ("notify", ("messages", "send", "Xabarnomalar", "Xabarnoma")), ("meetings", ("meetings", "video", "Uchrashuvlar", "Meeting")),
-                ("courses", ("courses", "play-circle", "Kurslar", "Kurslar")), ("guides", ("guides", "book-open", "Qo‘llanma", "Qo‘llanma")),
-                ("stats", ("stats", "bar-chart-2", "Statistika", "Statistika")), ("security", ("security", "shield", "Xavfsizlik", "Xavfsizlik")),
-                ("logs", ("logs", "terminal", "Tizim jurnali", "Jurnal"))]
-    items += [it for code, it in cand if V(code)]
-    items += [("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
+        return [("dashboard", "grid", "Panel", "Panel"), ("home", "file-text", "Maqolalar", "Maqola"), ("courses", "play-circle", "Kurslar", "Kurslar"),
+                ("tests", "check-square", "Testlar", "Testlar"), ("meetings", "video", "Uchrashuvlar", "Meeting"), ("groups", "layers", "Guruhlarim", "Guruhlar"),
+                ("tasks", "clipboard", "Vazifalarim", "Vazifalar"), ("stats", "bar-chart-2", "Statistika", "Statistika"), g,
+                ("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
+    items = [("dashboard", "grid", "Panel", "Panel"), ("home", "file-text", "Maqolalar", "Maqola")]
+    if u.can("tasks"): items.append(("tasks", "clipboard", "Vazifalar", "Vazifalar"))
+    if u.can("users"): items.append(("users", "users", "Foydalanuvchilar", "Userlar"))
+    items += [("groups", "layers", "Guruhlar", "Guruhlar"), ("tests", "check-square", "Testlar", "Testlar")]
+    if u.can("tests"): items.append(("reports", "flag", "Xato xabarlari", "Xabarlar"))
+    if u.can("notify"): items.append(("messages", "send", "Xabarnomalar", "Xabarnoma"))
+    items.append(("meetings", "video", "Uchrashuvlar", "Meeting"))
+    items += [("courses", "play-circle", "Kurslar", "Kurslar"), g, ("stats", "bar-chart-2", "Statistika", "Statistika"),
+              ("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
     return items
 
 
@@ -58,19 +55,4 @@ def shell(request):
     from django.contrib.messages import get_messages
     flash = [{"t": str(m.message), "l": m.level_tag} for m in get_messages(request)] if hasattr(request, "_messages") else []
     from .models import SiteSettingsModel
-    site = SiteSettingsModel.get()
-    prot = False
-    sec_open = 0
-    if u.is_authenticated:
-        prot = (not u.is_main) and bool(site.protect_students if u.is_student else site.protect_assistants)
-        if u.can_view("security") and not u.is_student:
-            from apps.security.models import SecurityIncidentModel
-            q = SecurityIncidentModel.objects.filter(reviewed=False, severity="high")
-            if u.is_assistant:
-                from apps.courses.services import scoped_students
-                q = q.filter(user__in=scoped_students(u))
-            sec_open = q.count()
-    for n in nav:
-        n["badge"] = sec_open if n["key"] == "security" else 0
-    return {"site": site, "flash": flash, "nav": nav, "nav_main": nav[:4], "unread": unread, "url_name": name,
-            "protect": prot, "sec_open": sec_open}
+    return {"site": SiteSettingsModel.get(), "flash": flash, "nav": nav, "nav_main": nav[:4], "unread": unread, "url_name": name}

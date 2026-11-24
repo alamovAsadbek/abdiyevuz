@@ -28,7 +28,7 @@ def unread_count_id(uid):
 
 
 def notify_staff(perm, text, link=""):
-    ids = [u.pk for u in UserModel.objects.filter(role__in=["main", "assistant"], is_active=True) if u.can_view(perm)]
+    ids = [u.pk for u in UserModel.objects.filter(role__in=["main", "assistant"], is_active=True) if u.can(perm)]
     if ids:
         notify(ids, text, link)
 

@@ -23,7 +23,7 @@ def _task_scope(request, lesson_qs=None):
 
 
 def _need_task_perm(request, t):
-    if not (request.user.is_teacher and request.user.can("tasks", "edit")):
+    if not (request.user.is_teacher and request.user.can("tasks")):
         return deny(request)
     return None
 
@@ -123,7 +123,7 @@ def tasks(request):
         L = make_list(request, rows, ["Vazifa", "Kurs / dars", "Eng yuqori ball", "Muddat", "Holat", "Mening ballim"],
                       [("st", "Holat", ["Topshirilmagan", "Tekshirilmoqda", "Qabul qilindi", "Qayta topshiring", "Muddati o‘tgan"])], show_mode=False)
         return render(request, "student/tasks.html", {"L": L})
-    if not (u.is_teacher and u.can_view("tasks")):
+    if not u.can("tasks"):
         return deny(request)
     for t in TaskModel.objects.select_related("lesson__module__course").order_by("-id"):
         en = enrolled(t.lesson, u)
@@ -134,13 +134,13 @@ def tasks(request):
         h = "Tekshirilmagan bor" if pend else "Hammasi tekshirilgan" if sb.exists() else "Hech kim topshirmagan"
         tt = T(h, "x" if pend else "f" if sb.exists() else "")
         st = T("Yopilgan", "x") if not t.is_open else T("Ochiq", "f")
-        acts = [A("trash-2", "O‘chirish", post=reverse("task_delete", args=[t.pk]), confirm="Vazifa o‘chirilsinmi?", cls="x")] if u.can("tasks", "delete") else []
+        acts = [A("trash-2", "O‘chirish", post=reverse("task_delete", args=[t.pk]), confirm="Vazifa o‘chirilsinmi?", cls="x")] if True else []
         rows.append({"title": t.title, "sub": t.lesson.title, "url": reverse("task_detail", args=[t.pk]), "tags": [tt, st],
                      "cells": [t.title, f"{t.lesson.module.course.title} · {t.lesson.module.title}", t.lesson.title, f"{t.max_score} ball", t.deadline or "—", f"{sb.count()} / {max(en.count(), sb.count())}", tt],
                      "actions": acts, "f": {"crs": t.lesson.module.course.title, "hl": h}})
     L = make_list(request, rows, ["Vazifa", "Kurs / modul", "Dars", "Ball", "Muddat", "Topshirgan", "Holat"],
                   [("crs", "Kurs", [c.title for c in CourseModel.objects.all()]), ("hl", "Holat", ["Tekshirilmagan bor", "Hammasi tekshirilgan", "Hech kim topshirmagan"])],
-                  [{"icon": "plus", "label": "Vazifa qo‘shish", "url": reverse("task_new_global")}] if u.can("tasks", "add") else None)
+                  [{"icon": "plus", "label": "Vazifa qo‘shish", "url": reverse("task_new_global")}])
     return render(request, "staff/tasks/list.html", {"L": L})
 
 
@@ -162,7 +162,7 @@ def task_detail(request, pk):
 # ---------------------------------------------------------------- submissions
 def _notify_reviewers(student, text, link):
     ids = {u.pk for u in UserModel.objects.filter(role="main")}
-    ids |= {a.pk for g in student.member_groups.all() for a in g.assistants.all() if a.can("tasks", "edit")}
+    ids |= {a.pk for g in student.member_groups.all() for a in g.assistants.all() if a.can("tasks")}
     notify(list(ids), text, link)
 
 

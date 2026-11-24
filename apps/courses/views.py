@@ -27,9 +27,8 @@ BUILTIN = [("pt", "Mendeleyev davriy jadvali", "Jadval", "118 ta element, katego
            ("ind", "Indikatorlar rangi", "Amaliy", "Kislotali, neytral va ishqoriy muhit")]
 
 
-def can_manage_lessons(user, course, action=None):
-    """action: add / edit / delete. None — biror yozish amali."""
-    return user.is_authenticated and user.is_teacher and user.can("groups" if course.is_hidden else "courses", action)
+def can_manage_lessons(user, course):
+    return user.is_authenticated and user.is_teacher and user.can("groups" if course.is_hidden else "courses")
 
 
 def lesson_rows(user, module):
@@ -113,14 +112,13 @@ def courses(request):
         price = ("dan " if c.is_modular and paid else "") + ("%s so‘m" % f"{c.min_price():,}".replace(",", " ") if paid else "Bepul")
         pt = T(price, "x" if paid else "f")
         acts = []
-        if u.is_authenticated and u.is_teacher and u.can("courses", "edit"):
-            acts = [A("edit-2", "Sozlamalar", url=reverse("course_detail", args=[c.pk]) + "?tab=set")]
-        if u.is_authenticated and u.is_teacher and u.can("courses", "delete"):
-            acts.append(A("trash-2", "O‘chirish", post=reverse("course_delete", args=[c.pk]), confirm="Kurs o‘chirilsinmi?", cls="x"))
+        if u.is_authenticated and u.is_teacher and u.can("courses"):
+            acts = [A("edit-2", "Sozlamalar", url=reverse("course_detail", args=[c.pk]) + "?tab=set"),
+                    A("trash-2", "O‘chirish", post=reverse("course_delete", args=[c.pk]), confirm="Kurs o‘chirilsinmi?", cls="x")]
         rows.append({"title": c.title, "sub": ("Modulli" if c.is_modular else "Modulsiz") + " kurs", "url": reverse("course_detail", args=[c.pk]), "tags": [pt],
                      "cells": [c.title, T("Modulli" if c.is_modular else "Modulsiz"), c.modules.count(), c.lesson_count, "Ketma-ket" if c.sequential else "Ixtiyoriy", pt],
                      "actions": acts, "f": {"ty": "Modulli" if c.is_modular else "Modulsiz", "pr": "Pullik" if paid else "Bepul", "sq": "Ketma-ket" if c.sequential else "Ixtiyoriy"}})
-    add = [{"icon": "plus", "label": "Yangi kurs", "url": reverse("course_new")}] if teacher and u.can("courses", "add") else None
+    add = [{"icon": "plus", "label": "Yangi kurs", "url": reverse("course_new")}] if teacher and u.can("courses") else None
     return render(request, "shared/courses/list.html", {"L": make_list(request, rows, ["Kurs nomi", "Turi", "Modullar", "Darslar", "Tartib", "Narx"],
                   [("ty", "Turi", ["Modulli", "Modulsiz"]), ("pr", "Narx", ["Bepul", "Pullik"]), ("sq", "Tartib", ["Ketma-ket", "Ixtiyoriy"])], add)})
 
@@ -154,58 +152,22 @@ def _course(request, pk):
 
 
 def course_detail(request, pk):
-    from django.db.models import Sum
     c = _course(request, pk)
     u = request.user
-    staff = u.is_authenticated and u.is_teacher
-    mg = staff and u.can("courses")
-    perm = {"add": staff and u.can("courses", "add"), "edit": staff and u.can("courses", "edit"), "delete": staff and u.can("courses", "delete"),
-            "gift": staff and u.can("gift")}
-    first = "mod" if c.is_modular else "les"
-    names = {first: "Modullar" if c.is_modular else "Darslar", "about": "Kurs haqida", "set": "Sozlamalar", "stu": "Talabalar", "his": "Tarix"}
-    keys = [first, "about"] + (["stu", "his"] if mg else []) + (["set"] if perm["edit"] or perm["delete"] else [])
+    mg = u.is_authenticated and u.is_teacher and u.can("courses")
+    keys = ["mod" if c.is_modular else "les"] + (["set", "stu", "his"] if mg else [])
     tab = request.GET.get("tab") if request.GET.get("tab") in keys else keys[0]
-    lessons = LessonModel.objects.filter(module__course=c)
-    mods_all = list(c.modules.all() if staff else c.modules.filter(is_active=True))
-    n_students = CourseAccessModel.objects.filter(course=c).values("user").distinct().count()
-    dur = lessons.aggregate(d=Sum("duration"))["d"] or 0
-    info = {"n_mod": len(mods_all) if c.is_modular else 0, "n_les": lessons.count(), "n_stu": n_students,
-            "n_task": TaskModel.objects.filter(lesson__module__course=c, is_active=True).count(),
-            "n_mat": LessonMaterialModel.objects.filter(lesson__module__course=c).count(),
-            "dur": dur, "views": sum(lessons.values_list("views", flat=True))}
-    progress = None
-    if u.is_authenticated and u.is_student:
-        done, tot = completed_count(u, c)
-        last = LessonProgressModel.objects.filter(user=u, lesson__module__course=c).select_related("lesson").order_by("-last_seen").first()
-        pct = round(done / tot * 100) if tot else 0
-        progress = {"done": done, "tot": tot, "pct": pct, "off": round(113 - 1.13 * pct, 1), "last": last.lesson if last else None}
-    first_lesson = lessons.order_by("module__order", "module_id", "order", "id").first()
-    owned = c.is_modular and any(can_access(u, c, m) for m in mods_all) if u.is_authenticated else False
-    whole = can_access(u, c, c.first_module()) if not c.is_modular else (all(can_access(u, c, m) for m in mods_all) if mods_all else False)
-    ctx = {"c": c, "mg": mg, "perm": perm, "tabs": [(k, names[k]) for k in keys], "tab": tab, "info": info, "progress": progress,
-           "first_lesson": first_lesson, "has_access": whole or owned, "staff": staff,
-           "price_label": ("dan " if c.is_modular and c.is_paid else "") + (f"{c.min_price():,}".replace(",", " ") + " so‘m" if c.is_paid else "Bepul")}
-    if not c.is_modular:
-        m = c.first_module()
-        ctx.update(module=m, can_buy=u.is_authenticated and u.is_student and c.price > 0 and not can_access(u, c, m))
+    ctx = {"c": c, "mg": mg, "tabs": [(keys[0], "Modullar" if c.is_modular else "Darslar")] + ([("set", "Sozlamalar"), ("stu", "Talabalar"), ("his", "Tarix")] if mg else []), "tab": tab}
     if tab == "mod":
-        rows = []
-        for m in mods_all:
-            ls = list(m.lessons.all())
-            ok = can_access(u, c, m)
-            d = done_n = 0
-            if u.is_authenticated and u.is_student:
-                done_n = LessonProgressModel.objects.filter(user=u, lesson__in=ls).count()
-            rows.append({"m": m, "n": len(ls), "ok": ok, "dur": sum(x.duration for x in ls), "done": done_n,
-                         "pct": round(done_n / len(ls) * 100) if ls else 0, "lessons": ls[:4]})
-        ctx["mods"] = rows
+        mods = c.modules.all() if mg else c.modules.filter(is_active=True)
+        ctx["mods"] = [{"m": m, "n": m.lessons.count(), "ok": can_access(u, c, m)} for m in mods]
     elif tab == "les":
-        ctx.update(rows=lesson_rows(u, ctx["module"]), ok=can_access(u, c, ctx["module"]))
+        m = c.first_module()
+        ctx.update(module=m, rows=lesson_rows(u, m), ok=can_access(u, c, m), can_buy=u.is_authenticated and u.is_student and c.price > 0 and not can_access(u, c, m))
     elif tab == "stu":
         ids = list(CourseAccessModel.objects.filter(course=c).values_list("user_id", flat=True))
-        tot = max(1, info["n_les"])
         ctx["students"] = [{"u": s, "mods": [a.module.title if a.module else "Barcha modullar" for a in CourseAccessModel.objects.filter(user=s, course=c).select_related("module")],
-                            "n": completed_count(s, c)[0], "pct": round(completed_count(s, c)[0] / tot * 100)} for s in scoped_students(u).filter(pk__in=ids)]
+                            "n": completed_count(s, c)[0]} for s in scoped_students(u).filter(pk__in=ids)]
     elif tab == "his":
         ctx["events"] = EventModel.objects.filter(course=c).select_related("user", "actor")[:100]
     return render(request, "shared/courses/detail.html", ctx)
@@ -309,8 +271,6 @@ def _lesson(request, pk):
 def lesson_detail(request, pk):
     l = _lesson(request, pk)
     u, m, c = request.user, l.module, l.module.course
-    if u.is_authenticated and not u.can_view("groups" if c.is_hidden else "courses"):
-        return deny(request)
     msg = lock_reason(u, l)
     back = reverse("group_detail", args=[c.group_id]) if c.is_hidden else reverse("module_detail", args=[m.pk]) if c.is_modular else reverse("course_detail", args=[c.pk])
     if msg:
@@ -357,7 +317,7 @@ def lesson_detail(request, pk):
 def _lesson_form(request, module=None, lesson=None):
     m = module or lesson.module
     c = m.course
-    if not can_manage_lessons(request.user, c, "edit" if lesson else "add"):
+    if not can_manage_lessons(request.user, c):
         return deny(request)
     if request.method == "POST":
         t = request.POST.get("title", "").strip()
@@ -390,7 +350,7 @@ def lesson_edit(request, pk):
 @post_only
 def lesson_delete(request, pk):
     l = _lesson(request, pk)
-    if not can_manage_lessons(request.user, l.module.course, "delete"):
+    if not can_manage_lessons(request.user, l.module.course):
         return deny(request)
     m = l.module
     import shutil
@@ -404,7 +364,7 @@ def lesson_delete(request, pk):
 @login_required
 def material_new(request, pk):
     l = _lesson(request, pk)
-    if not can_manage_lessons(request.user, l.module.course, "edit"):
+    if not can_manage_lessons(request.user, l.module.course):
         return deny(request)
     if request.method == "POST":
         t, url, f = request.POST.get("title", "").strip(), request.POST.get("url", "").strip(), request.FILES.get("file")
@@ -436,7 +396,7 @@ def material_new(request, pk):
 @post_only
 def material_delete(request, pk):
     mt = get_object_or_404(LessonMaterialModel, pk=pk)
-    if not can_manage_lessons(request.user, mt.lesson.module.course, "edit"):
+    if not can_manage_lessons(request.user, mt.lesson.module.course):
         return deny(request)
     lid = mt.lesson_id
     mt.file.delete(save=False) if mt.file else None

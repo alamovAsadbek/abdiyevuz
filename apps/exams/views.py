@@ -23,51 +23,37 @@ from .services import attempt_count, can_try, grants_left, has_paid_access, scor
 
 
 def _mg(user):
-    return user.is_authenticated and user.is_teacher and user.can("tests", "edit")
-
-
-def _staff(u):
-    return u.is_authenticated and u.is_teacher
-
-
-HIDDEN_FOR_STUDENTS = ("finished", "inactive")
+    return user.is_authenticated and user.is_teacher and user.can("tests")
 
 
 def tests(request):
-    """Tugagan va noaktiv testlar faqat o'qituvchilarga (asosiy + yordamchi) ko'rinadi."""
     u = request.user
-    staff = _staff(u)
     rows = []
     for t in TestModel.objects.all().prefetch_related("questions"):
-        if not staff and t.live_status in HIDDEN_FOR_STUDENTS:
-            continue
         lab = t.label
         st = T(*lab)
         pt = T(f"{t.price:,}".replace(",", " ") + " so‘m", "x") if t.is_paid else T("Bepul", "f")
         acts = []
-        if staff and u.can("tests", "edit"):
+        if _mg(u):
             acts = [A("edit-2", "Tahrirlash", url=reverse("test_edit", args=[t.pk])),
-                    A("pause" if t.is_active else "play", "Aktiv/Noaktiv", post=reverse("test_toggle", args=[t.pk]), confirm="Test holati o‘zgartirilsinmi?")]
-        if staff and u.can("tests", "delete"):
-            acts.append(A("trash-2", "O‘chirish", post=reverse("test_delete", args=[t.pk]), confirm=f"“{t.title}” testi o‘chirilsinmi?", cls="x"))
+                    A("pause" if t.is_active else "play", "Aktiv/Noaktiv", post=reverse("test_toggle", args=[t.pk]), confirm="Test holati o‘zgartirilsinmi?"),
+                    A("trash-2", "O‘chirish", post=reverse("test_delete", args=[t.pk]), confirm=f"“{t.title}” testi o‘chirilsinmi?", cls="x")]
         n = t.questions.count()
         rows.append({"title": t.title, "sub": f"{n} ta savol", "url": reverse("test_detail", args=[t.pk]), "tags": [st],
                      "cells": [t.title, f"{n} ta", t.start_at, t.end_at, st, pt], "actions": acts,
                      "f": {"st": lab[0], "pr": "Pullik" if t.is_paid else "Bepul"}})
-    add = [{"icon": "plus", "label": "Yangi test", "url": reverse("test_new")}] if staff and u.can("tests", "add") else None
-    sts = ["Aktiv", "Noaktiv", "Tugagan", "Kutilmoqda"] if staff else ["Aktiv", "Kutilmoqda"]
+    add = [{"icon": "plus", "label": "Yangi test", "url": reverse("test_new")}] if _mg(u) else None
     return render(request, "shared/tests/list.html", {"L": make_list(request, rows, ["Test nomi", "Savollar", "Boshlanishi", "Tugashi", "Status", "Narx"],
-                  [("st", "Status", sts), ("pr", "Narx", ["Bepul", "Pullik"])], add)})
+                  [("st", "Status", ["Aktiv", "Noaktiv", "Tugagan", "Kutilmoqda"]), ("pr", "Narx", ["Bepul", "Pullik"])], add)})
 
 
 def test_detail(request, pk):
     t = get_object_or_404(TestModel, pk=pk)
     u = request.user
     mg = _mg(u)
+    if not mg and not (u.is_authenticated and u.is_teacher):
+        pass
     st = t.live_status
-    if not _staff(u) and st in HIDDEN_FOR_STUDENTS:
-        messages.info(request, "Bu test yakunlangan" if st == "finished" else "Bu test hozircha mavjud emas")
-        return redirect("tests")
     ctx = {"t": t, "st": st, "label": t.label, "n": t.questions.count(), "mg": mg, "is_staff": u.is_authenticated and u.is_teacher}
     ctx["paid_block"] = t.is_paid and not has_paid_access(t, u)
     ctx["guest_block"] = (not u.is_authenticated) and (t.is_paid or not t.allow_guest)
@@ -355,7 +341,7 @@ def report_new(request, pk):
     if not h.strip():
         return JsonResponse({"ok": False, "error": "Xatolik haqida yozing"}, status=400)
     ErrorReportModel.objects.create(test=t, user=request.user, question_index=to_int(request.POST.get("q")), html=h)
-    notify_staff("reports", f"Test xatoligi: “{t.title}”, {to_int(request.POST.get('q')) + 1}-savol ({request.user.full_name})", "/staff/reports/")
+    notify_staff("tests", f"Test xatoligi: “{t.title}”, {to_int(request.POST.get('q')) + 1}-savol ({request.user.full_name})", "/staff/reports/")
     return JsonResponse({"ok": True})
 
 

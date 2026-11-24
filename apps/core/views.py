@@ -158,18 +158,11 @@ def article_delete(request, pk):
 @require_POST
 def site_settings(request):
     s = SiteSettingsModel.get()
-    if request.POST.get("section") == "protect":
-        s.protect_students = bool(request.POST.get("protect_students"))
-        s.protect_assistants = bool(request.POST.get("protect_assistants"))
-        s.protect_watermark = bool(request.POST.get("protect_watermark"))
-        s.save()
-        messages.success(request, "Himoya sozlamalari saqlandi")
-        return redirect(reverse("settings") + "?tab=protect")
     s.articles_public = bool(request.POST.get("articles_public"))
     s.registration_open = bool(request.POST.get("registration_open"))
     s.save()
     messages.success(request, "Umumiy sozlamalar saqlandi")
-    return redirect(reverse("settings") + "?tab=site")
+    return redirect("settings")
 
 
 def file_info(request, kind, pk):

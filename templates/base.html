@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
 {% block head %}{% endblock %}
 </head>
-<body data-role="{{ request.user.role }}"{% if protect %} data-protect="1"{% if site.protect_watermark %} data-wm="1"{% endif %}{% endif %} data-uid="{% if request.user.is_authenticated %}{{ request.user.uid }}{% endif %}" data-name="{% if request.user.is_authenticated %}{{ request.user.full_name }}{% endif %}">
+<body data-role="{{ request.user.role }}" data-uid="{% if request.user.is_authenticated %}{{ request.user.uid }}{% endif %}" data-name="{% if request.user.is_authenticated %}{{ request.user.full_name }}{% endif %}">
 <div id="app"><div class="app">
 <header class="top gl">
   <a class="brand" href="{% url 'home' %}"><i>{% icon 'hexagon' %}</i>Abdiyev.uz</a><div class="sp"></div>
@@ -21,7 +21,7 @@
 </header>
 <div class="bd">
   <aside class="side">
-    {% for n in nav %}<a class="nv {% if n.on %}on{% endif %}" href="{{ n.url }}">{% icon n.icon %}<span class="sp">{{ n.label }}</span>{% if n.badge %}<span class="nvb">{{ n.badge }}</span>{% endif %}</a>{% endfor %}
+    {% for n in nav %}<a class="nv {% if n.on %}on{% endif %}" href="{{ n.url }}">{% icon n.icon %}{{ n.label }}</a>{% endfor %}
     <div class="sp"></div>
     {% if request.user.is_authenticated %}<button class="nv" data-confirm="Tizimdan chiqmoqchimisiz?" data-post="{% url 'logout' %}">{% icon 'log-out' %}Chiqish</button>{% endif %}
   </aside>
@@ -41,7 +41,5 @@
 <div id="ov"></div>
 {% if flash %}{{ flash|json_script:"flash" }}{% endif %}
 <script src="{% static 'js/app.js' %}"></script>
-<script src="{% static 'js/perms.js' %}"></script>
-{% if protect %}<script src="{% static 'js/guard.js' %}"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body></html>

@@ -137,15 +137,3 @@ def dur(sec):
     h, r = divmod(sec, 3600)
     m, s = divmod(r, 60)
     return (f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}")
-
-
-@register.filter
-def can_do(user, spec):
-    """{% if request.user|can_do:'tests.add' %}"""
-    code, _, action = str(spec).partition(".")
-    return bool(user.is_authenticated and user.can(code, action or "view"))
-
-
-@register.filter
-def can_view(user, code):
-    return bool(user.is_authenticated and user.can_view(code))

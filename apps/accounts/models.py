@@ -82,49 +82,14 @@ class UserModel(AbstractUser):
     def online(self):
         return bool(self.last_seen and (timezone.now() - self.last_seen).total_seconds() < 300)
 
-    # ------------------------------------------------------------ ruxsatlar (bo'lim × amal)
-    @property
-    def grants(self):
-        """{bo'lim: [amallar]}. Eski ro'yxat ko'rinishi yoki bo'sh — rol standarti."""
-        c = getattr(self, "_grants_cache", None)
-        if c is not None:
-            return c
-        from . import permissions as PM
-        if self.is_main:
-            g = {s[0]: list(s[3]) for s in PM.SECTIONS}
-        elif isinstance(self.perms, dict):
-            g = PM.clean(self.role, self.perms)
-        else:
-            g = PM.legacy_to_dict(self.role, self.perms)
-        self._grants_cache = g
-        return g
-
-    def set_grants(self, data):
-        from . import permissions as PM
-        self.perms = PM.clean(self.role, data)
-        self._grants_cache = None
-
-    def reset_grants(self):
-        from . import permissions as PM
-        self.perms = PM.role_defaults(self.role)
-        self._grants_cache = None
-
-    def can(self, code, action=None):
-        """action=None — bo'limda biror yozish (qo'shish/tahrirlash/o'chirish/ruxsat) amali bormi.
-        action='view' — bo'lim ko'rinadimi (yozish amali bo'lsa ko'rish ham bor)."""
+    def can(self, code):
         if self.is_main:
             return True
-        if self.role not in (self.ASSISTANT, self.STUDENT):
+        if not self.is_assistant:
             return False
-        acts = self.grants.get(code) or []
-        if action is None:
-            return self.is_assistant and any(a != "view" for a in acts)
-        if action == "view":
-            return bool(acts)
-        return self.is_assistant and action in acts
-
-    def can_view(self, code):
-        return self.can(code, "view")
+        if code in (self.perms or []):
+            return True
+        return code == "tasks" and "courses" in (self.perms or [])
 
 
 class RefreshTokenModel(models.Model):

@@ -75,8 +75,6 @@ def tick(cleanup=False):
     from apps.exams.models import TestModel
     from apps.notifications.services import notify
     now = timezone.now()
-    if cleanup:
-        _purge_logs(now)
     for t in TestModel.objects.all():
         new = t.compute_status(now)
         if new != t.status:
@@ -96,13 +94,3 @@ def tick(cleanup=False):
     if cleanup:
         from apps.accounts.models import RefreshTokenModel
         RefreshTokenModel.objects.filter(expires_at__lt=now).delete()
-
-
-def _purge_logs(now):
-    """Bazadagi jurnal yozuvlari LOG_RETENTION_DAYS kundan eski bo'lsa o'chiriladi (fayl jurnallari o'zi aylanadi)."""
-    from datetime import timedelta
-    from apps.security.models import AuditLogModel
-    lim = now - timedelta(days=settings.LOG_RETENTION_DAYS)
-    n, _ = AuditLogModel.objects.filter(created__lt=lim).delete()
-    if n:
-        log.info("Eski jurnal yozuvlari o'chirildi: %s", n)

@@ -58,25 +58,17 @@ def student_required(view):
     return w
 
 
-def perm_required(code, action="view"):
-    """Backend ruxsat tekshiruvi (faqat o'qituvchilar): asosiy o'qituvchi — hammasi; yordamchi — faqat berilgan amallar.
-    Aniq amal (qo'shish/tahrirlash/o'chirish) qo'shimcha ravishda SectionAccessMiddleware da url nomi bo'yicha tekshiriladi."""
+def perm_required(code):
+    """Backend ruxsat tekshiruvi: asosiy o'qituvchi — hammasi; yordamchi — faqat berilgan ruxsatlar."""
     def deco(view):
         @wraps(view)
         @login_required
         def w(request, *a, **kw):
-            if not (request.user.is_teacher and request.user.can(code, action)):
+            if not (request.user.is_teacher and request.user.can(code)):
                 return deny(request)
             return view(request, *a, **kw)
         return w
     return deco
-
-
-def section_check(user, code, action="view"):
-    """Kirgan foydalanuvchi uchun bo'lim/amal ruxsati (mehmon — view ichida alohida hal qilinadi)."""
-    if not user.is_authenticated:
-        return True
-    return user.can(code, action)
 
 
 def post_only(view):
