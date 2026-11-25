@@ -27,7 +27,7 @@
     {% else %}
       <div class="chsl">Narxi</div><div class="chpr">{{ price_label }}</div>
       {% if has_access and request.user.is_authenticated and not staff %}<span class="chip2 ok">{% icon 'check-circle' %}Sizda ochiq</span>{% endif %}
-      {% if staff %}<div class="chsl" style="margin-top:12px">Jami ko‘rishlar</div><div class="chsv">{{ info.views }}</div>{% endif %}
+      {% if sv %}<div class="chsl" style="margin-top:12px">Jami ko‘rishlar</div><div class="chsv">{{ info.views }}</div>{% endif %}
     {% endif %}
   </aside>
 </section>
@@ -96,6 +96,7 @@
 {% if not c.is_modular %}{% include "partials/f.html" with label="Narxi, so‘m (0 = bepul)" name="price" type="number" v=c.price ph="0" min0=1 hint="Pullik kursni talaba sotib olish so‘rovi orqali oladi yoki siz ochib berasiz" %}{% else %}<div class="warn">{% icon 'info' %}<span>Modulli kursda narx har bir modul uchun alohida — modul sahifasida «Tahrirlash» orqali belgilanadi.</span></div>{% endif %}
 {% include "partials/check.html" with name="sequential" on=c.sequential title="Ketma-ket ko‘rish" desc="Keyingi dars avvalgisi ko‘rilgach va vazifasi yuborilgach ochiladi" %}
 {% include "partials/check.html" with name="login_required" on=c.login_required title="Ko‘rish uchun kirish majburiy" desc="Yoqilsa, bepul darslarni ham faqat tizimga kirganlar ko‘radi" %}
+{% include "partials/check.html" with name="show_views" on=c.show_views title="Ko‘rishlar sonini ko‘rsatish" desc="Darslar necha marta ko‘rilgani, kim ko‘rgani va kim ko‘rmagani. O‘chirilsa — faqat asosiy o‘qituvchi ko‘radi; yoqilsa — «Ko‘rishlar soni» ruxsati berilganlar ham ko‘radi" %}
 <button class="bt mt">{% icon 'save' %} Saqlash</button></form>{% else %}<p class="m">Tahrirlash ruxsatingiz yo‘q</p>{% endif %}</div>
 <div class="c p"><h3 style="margin-bottom:12px">{% icon 'alert-triangle' %} Holat va xavfli amallar</h3>
 <div class="ls" style="cursor:default"><span class="ic" style="background:var(--p2)">{% icon 'power' %}</span><span class="sp"><b>{% if c.is_active %}Kurs aktiv{% else %}Kurs noaktiv{% endif %}</b><div class="m">Noaktiv kurs talabalarga ko‘rinmaydi, lekin ma’lumotlari saqlanadi</div></span>{% if perm.edit %}<button type="button" class="bt s" data-post="{% url 'course_toggle' c.pk %}" data-confirm="Kurs holati o‘zgartirilsinmi?">{% if c.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</button>{% endif %}</div>

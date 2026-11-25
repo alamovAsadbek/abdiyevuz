@@ -23,6 +23,7 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
         ok, why = access.can_join(meeting, user)
         if not ok:
             return meeting, why, None
+        S.drop_stale(pk)
         m = MeetingMemberModel.objects.filter(meeting=meeting, user=user).first()
         mod = access.is_moderator(meeting, user, m)
         online = MeetingMemberModel.objects.filter(meeting=meeting, online=True).exclude(user=user).count()
@@ -31,7 +32,7 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
         if not m:
             m = MeetingMemberModel.objects.create(meeting=meeting, user=user, invited=False)
         S.start_meeting(meeting, user) if mod else None
-        MeetingMemberModel.objects.filter(pk=m.pk).update(online=True, joined_at=timezone.now(), state=dict(S.DEFAULT_STATE))
+        MeetingMemberModel.objects.filter(pk=m.pk).update(online=True, joined_at=timezone.now(), seen_at=timezone.now(), state=dict(S.DEFAULT_STATE))
         MeetingModel.objects.filter(pk=pk).update(empty_since=None)
         MeetingSessionModel.objects.filter(meeting=meeting, user=user, left_at__isnull=True).update(left_at=timezone.now())
         MeetingSessionModel.objects.create(meeting=meeting, user=user, role=S.role_of(meeting, user, m))
@@ -46,6 +47,16 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
             S.rec_finish(r, user)
         if not MeetingMemberModel.objects.filter(meeting_id=pk, online=True).exists():
             MeetingModel.objects.filter(pk=pk, status="live").update(empty_since=timezone.now())
+
+    @staticmethod
+    def _touch(pk, user):
+        """Ping: ulanish tirik. Agar foydalanuvchi uzilgan deb belgilangan bo'lsa — qayta «onlayn» qilinadi."""
+        revived = MeetingMemberModel.objects.filter(meeting_id=pk, user=user, online=False, banned=False).update(online=True, seen_at=timezone.now())
+        MeetingMemberModel.objects.filter(meeting_id=pk, user=user).update(seen_at=timezone.now())
+        gone = S.drop_stale(pk)
+        if revived:
+            MeetingModel.objects.filter(pk=pk).update(empty_since=None)
+        return gone, bool(revived)
 
     @staticmethod
     def _init_payload(pk, user):
@@ -270,7 +281,13 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
                 return await self.send_json({"type": "notice", "text": "Bu amalga ruxsat yo‘q"})
             await self._apply(r)
         elif t == "ping":
+            gone, revived = await dbs(self._touch)(self.pk, self.user)
             await self.send_json({"type": "pong"})
+            if revived:   # boshqalar bu ulanishni yopib bo'lgan — mijoz qaytadan to'liq ulanadi
+                await self.send_json({"type": "resync"})
+            for g in gone:   # uzilib qolganlar boshqalarda ham yopiladi
+                if g != uid:
+                    await self.channel_layer.group_send(G, {"type": "ev", "payload": {"type": "peer_left", "uid": g}})
 
     async def _apply(self, r):
         G, k = S.grp(self.pk), r["kind"]

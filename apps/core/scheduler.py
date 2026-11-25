@@ -45,6 +45,8 @@ def _meetings(now):
     from apps.meetings import services as MS
     from apps.notifications.services import notify
     lim = now - timedelta(minutes=settings.MEETING_EMPTY_END_MINUTES)
+    for pk in MeetingModel.objects.filter(status="live").values_list("pk", flat=True):
+        MS.drop_stale(pk)   # server qayta ishga tushganda «onlayn» bo'lib qolganlar
     for m in MeetingModel.objects.filter(status="live", empty_since__isnull=False, empty_since__lte=lim):
         MS.end_meeting(m, None, auto=True)
     from apps.accounts.models import UserModel

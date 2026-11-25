@@ -28,6 +28,7 @@ SECTIONS = [
     ("guides", "Qo‘llanmalar", "book-open", CRUD, "as", "Jadval, formula va boshqa qo‘llanmalar"),
     ("meetings", "Uchrashuvlar (meeting)", "video", CRUD, "as", "Video uchrashuvlar; «Qo‘shish» — uchrashuv tashkil qilish"),
     ("stats", "Statistika", "bar-chart-2", [VIEW], "as", "Rolga mos statistika sahifasi"),
+    ("views", "Ko‘rishlar soni", "eye", [VIEW], "as", "Darslar necha marta ko‘rilgani, kim ko‘rgani va kim ko‘rmagani (kurs sozlamasida «Ko‘rishlar sonini ko‘rsatish» yoqilgan bo‘lsa)"),
     ("users", "Foydalanuvchilar", "users", CRUD, "a", "O‘z guruhidagi talabalarni qo‘shish, tahrirlash, bloklash, o‘chirish"),
     ("gift", "Kurs berish / olib tashlash", "gift", [USE], "a", "Talabalarga kurs yoki modulni to‘lovsiz ochib berish"),
     ("notify", "Xabarnomalar", "send", CRUD, "a", "Talabalarga xabarnoma yuborish"),
@@ -36,7 +37,7 @@ SECTIONS = [
 SECTION_MAP = {s[0]: s for s in SECTIONS}
 SECTION_CODES = [s[0] for s in SECTIONS]
 
-_DEFAULT_VIEW = ["articles", "courses", "tests", "tasks", "groups", "guides", "meetings", "stats"]
+_DEFAULT_VIEW = ["articles", "courses", "tests", "tasks", "groups", "guides", "meetings", "stats", "views"]
 CODE_DEFAULTS = {
     "assistant": {c: [VIEW] for c in _DEFAULT_VIEW},
     "student": {c: [VIEW] for c in _DEFAULT_VIEW},
@@ -166,7 +167,7 @@ ROUTES = {
     "guides": ("guides", VIEW), "guide_detail": ("guides", VIEW), "guide_new": ("guides", ADD),
     "guide_toggle": ("guides", EDIT), "guide_delete": ("guides", DELETE),
 
-    "meetings": ("meetings", VIEW), "meeting_detail": ("meetings", VIEW), "meeting_room": ("meetings", VIEW),
+    "meetings": ("meetings", VIEW), "meeting_detail": ("meetings", VIEW), "meeting_room": ("meetings", VIEW), "meeting_ping": ("meetings", VIEW),
     "meeting_code": ("meetings", VIEW), "meeting_new": ("meetings", ADD), "meeting_edit": ("meetings", EDIT),
     "meeting_delete": ("meetings", DELETE),
 

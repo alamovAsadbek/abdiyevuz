@@ -2,6 +2,4 @@
     {% if type == "textarea" %}<textarea name="{{ name }}" placeholder="{{ ph }}"
                                          style="min-height:{{ h|default:'90px' }}">{{ v|default:"" }}</textarea>
     {% else %}<input type="{{ type|default:'text' }}" name="{{ name }}" value="{{ v|default:'' }}"
-                     placeholder="{{ ph }}" {% if req %} required{% endif %}{% if ac %} autocomplete="{{ ac }}" {% endif
-                     %}{% if phone %} data-phone{% endif %}{% if min0 %} min="0" {% endif %}>{% endif %}{% if hint
-    %}<small class="fh">{{ hint }}</small>{% endif %}</label>
+                     placeholder="{{ ph }}" {% if req %} required{% endif %}{% if ac %} autocomplete="{{ ac }}" {% endif %}{% if phone %} data-phone{% endif %}{% if min0 %} min="0" {% endif %}>{% endif %}{% if hint %}<small class="fh">{{ hint }}</small>{% endif %}</label>

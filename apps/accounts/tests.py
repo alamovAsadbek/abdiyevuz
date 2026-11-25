@@ -222,3 +222,96 @@ class CoursePageTests(BaseCase):
             r = c.get(reverse("course_detail", args=[mc.pk]))
             self.assertContains(r, "1-modul")
             self.assertEqual(c.get(reverse("module_detail", args=[m.pk])).status_code, 200)
+
+
+class LessonViewsVisibilityTests(BaseCase):
+    """Ko'rishlar soni: kurs sozlamasi + «Ko'rishlar soni» ruxsati."""
+
+    def url(self, tab=""):
+        return reverse("lesson_detail", args=[self.lesson.pk]) + (f"?tab={tab}" if tab else "")
+
+    def test_main_always_sees(self):
+        self.course.show_views = False
+        self.course.save()
+        r = client_for(self.main).get(self.url())
+        self.assertContains(r, "marta ko‘rilgan")
+        r = client_for(self.main).get(self.url("stu"))
+        self.assertContains(r, "Necha marta")
+
+    def test_student_by_course_setting_and_permission(self):
+        c = client_for(self.stu)
+        c.get(self.url())
+        self.assertContains(c.get(self.url()), "marta ko‘rdingiz")   # ikkinchi ochilish — 2 marta
+        self.course.show_views = False
+        self.course.save()
+        self.assertNotContains(c.get(self.url()), "marta ko‘rdingiz")
+        self.course.show_views = True
+        self.course.save()
+        self.stu.set_grants({"courses": ["view"]})   # «Ko'rishlar soni» berilmagan
+        self.stu.save()
+        r = c.get(self.url())
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "marta ko‘r")
+
+    def test_assistant_needs_permission(self):
+        c = client_for(self.ass)
+        self.assertContains(c.get(self.url("stu")), "Necha marta")   # standart — ruxsat bor
+        self.ass.set_grants({"courses": ["view"]})
+        self.ass.save()
+        r = c.get(self.url("stu"))
+        self.assertNotContains(r, "Necha marta")
+        self.assertContains(r, "«Ko‘rishlar soni» ruxsati yo‘q")
+        self.assertNotContains(c.get(self.url()), "marta ko‘rilgan")
+
+    def test_course_setting_saved(self):
+        c = client_for(self.main)
+        c.post(reverse("course_settings", args=[self.course.pk]), {"title": "Kimyo asoslari", "sequential": "1"})
+        self.course.refresh_from_db()
+        self.assertFalse(self.course.show_views)
+        c.post(reverse("course_settings", args=[self.course.pk]), {"title": "Kimyo asoslari", "show_views": "1"})
+        self.course.refresh_from_db()
+        self.assertTrue(self.course.show_views)
+
+    def test_lesson_page_layout(self):
+        LessonModel.objects.create(module=self.lesson.module, title="2-dars")
+        r = client_for(self.stu).get(self.url())
+        self.assertContains(r, 'class="lsn"')
+        self.assertContains(r, "2-dars")   # yon paneldagi darslar ro'yxati
+
+
+class TemplateSyntaxTests(TestCase):
+    """Django teglari ({% %}, {{ }}) bir qatorda bo'lishi shart — aks holda sahifada matn bo'lib chiqadi.
+    (IDE «Reformat code» teglarni bir necha qatorga bo'lib yuborishi mumkin.)"""
+
+    def test_no_multiline_tags(self):
+        import re
+        from pathlib import Path
+        from django.conf import settings
+        pat = re.compile(r"\{%.*?%\}|\{\{.*?\}\}|\{#.*?#\}", re.S)
+        bad = []
+        for root in [Path(d) for d in settings.TEMPLATES[0]["DIRS"]] + list(Path(settings.BASE_DIR, "apps").glob("*/templates")):
+            for f in Path(root).rglob("*.html"):
+                for m in pat.finditer(f.read_text(encoding="utf-8")):
+                    if "\n" in m.group(0):
+                        bad.append(f"{f.name}: {m.group(0)[:60]!r}")
+        self.assertEqual(bad, [], "Ko'p qatorli teglar:\n" + "\n".join(bad))
+
+    def test_pages_render_without_raw_tags(self):
+        main = UserModel.objects.create_user("bosh", password="Xx#12345678", full_name="Bosh", role="main")
+        stu = UserModel.objects.create_user("tal", password="Xx#12345678", full_name="Tal")
+        c = Client()
+        for url in ("/login/", "/"):
+            r = c.get(url)
+            self.assertNotIn(b"{%", r.content, url)
+        for u, urls in ((main, ["users", "settings", "stats", "meetings", "meeting_new", "courses", "course_new"]),
+                        (stu, ["dashboard", "stats", "meetings", "courses"])):
+            cl = client_for(u)
+            for name in urls:
+                r = cl.get(reverse(name))
+                self.assertEqual(r.status_code, 200, name)
+                self.assertNotIn(b"{%", r.content, name)
+                self.assertNotIn(b"{{", r.content, name)
+        for tab in ("info", "perm", "kurs"):
+            r = client_for(main).get(reverse("user_detail", args=[stu.pk]) + "?tab=" + tab)
+            self.assertEqual(r.status_code, 200, tab)
+            self.assertNotIn(b"{%", r.content, tab)

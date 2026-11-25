@@ -19,6 +19,8 @@
  <div class="mr-app" id="mr-app" hidden>
   <header class="mr-top"><b class="mr-title">{{ m.title }}</b><span class="tag f" id="mr-live">Jonli</span><span class="tag x mr-rec" id="mr-rec" hidden>● Yozilmoqda</span><span class="m" id="mr-clock"></span><div class="sp"></div>
    <button class="mr-cb sm" id="b-view" title="Ko‘rinish: katta oyna / hammasi">{% icon 'layout' %}</button><button class="mr-cb sm" id="tg-panel" title="Chat va qatnashchilar">{% icon 'message-square' %}<span class="dot" id="mr-unread" hidden>0</span></button></header>
+  <div class="mr-net" id="mr-net" hidden>{% icon 'wifi-off' %} Aloqa uzildi — qayta ulanmoqda…</div>
+  <button type="button" class="bt mr-unmute" id="mr-unmute" hidden>{% icon 'volume-2' %} Ovozni yoqish</button>
   <div class="mr-main"><div class="mr-stage"><div class="mr-grid" id="grid" data-mode="speaker"></div></div>
    <aside class="mr-side" id="side"><div class="tabs c" style="margin:0 0 8px"><button type="button" class="on" data-tab="chat">Chat</button><button type="button" data-tab="people">Qatnashchilar <span id="pc">0</span></button></div>
     <div class="mr-pane" id="pane-chat"><div class="mr-msgs" id="msgs"></div><div class="mr-mention" id="mention" hidden></div>

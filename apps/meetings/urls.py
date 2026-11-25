@@ -12,6 +12,7 @@ urlpatterns = [
     path("meetings/<int:pk>/start/", v.meeting_start, name="meeting_start"),
     path("meetings/<int:pk>/end/", v.meeting_end, name="meeting_end"),
     path("meetings/<int:pk>/room/", v.meeting_room, name="meeting_room"),
+    path("meetings/<int:pk>/ping/", v.meeting_ping, name="meeting_ping"),
     path("meetings/<int:pk>/invite/", v.meeting_invite, name="meeting_invite"),
     path("meetings/<int:pk>/cohost/", v.meeting_cohost_add, name="meeting_cohost_add"),
     path("meetings/<int:pk>/member/<int:uid>/", v.member_action, name="meeting_member"),

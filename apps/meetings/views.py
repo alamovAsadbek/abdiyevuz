@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.accounts.models import UserModel
 from apps.core.helpers import A, T, jload, make_list, parse_local, to_int
 from apps.core.perms import deny, login_required, post_only
-from apps.courses.services import scoped_students
+from apps.courses.services import my_groups, scoped_students
 from . import access, services as S
 from .models import MPERMS, MeetingMemberModel, MeetingModel, MeetingRecordingModel
 
@@ -43,8 +43,23 @@ def _candidates(user, meeting):
     return qs.order_by("full_name")
 
 
+def _group_json(user):
+    rows = []
+    for g in my_groups(user).order_by("name"):
+        n = g.members.filter(show_on_site=True, is_active=True, is_blocked=False).count()
+        if n:
+            rows.append({"id": g.pk, "t": g.name, "s": f"{n} ta a’zo", "off": False})
+    return json.dumps(rows, ensure_ascii=False).replace("<", "\\u003c")
+
+
+def _group_users(user, meeting, gids):
+    """Tanlangan guruhlar a'zolari (faqat foydalanuvchi boshqaradigan guruhlar va ko'ra oladigan talabalar)."""
+    gs = my_groups(user).filter(pk__in=gids)
+    return _candidates(user, meeting).filter(member_groups__in=gs).distinct()
+
+
 def _picker_json(qs, off=()):
-    return json.dumps([{"id": u.pk, "t": u.full_name or u.username, "s": f"@{u.username} · {u.uid}", "off": u.pk in off} for u in qs], ensure_ascii=False)
+    return json.dumps([{"id": u.pk, "t": u.full_name or u.username, "s": f"@{u.username} · {u.uid}", "off": u.pk in off} for u in qs], ensure_ascii=False).replace("<", "\\u003c")
 
 
 def fmt_dur(sec):
@@ -102,6 +117,11 @@ def _save(request, m=None):
     else:
         m = MeetingModel.objects.create(host=request.user, **fields)
         MeetingMemberModel.objects.get_or_create(meeting=m, user=request.user, defaults={"invited": True})
+    gids = [to_int(x) for x in d.getlist("groups") if to_int(x)]
+    if gids:
+        n = S.invite(m, request.user, _group_users(request.user, m, gids))
+        if n:
+            messages.info(request, f"{n} ta qatnashchi taklif qilindi")
     return m
 
 
@@ -119,7 +139,8 @@ def _form_ctx(request, m):
              "start_at": timezone.localtime(m.start_at).strftime("%Y-%m-%dT%H:%M") if m.start_at else ""}
     else:
         F = {"title": "", "description": "", "start_at": "", "kind": "private", "chat_on": True, "mic_default": True, "cam_default": True, "screen_default": False}
-    return {"m": m, "F": F, "kinds": KINDS}
+    groups = [(g.pk, g.name, g.members.filter(show_on_site=True).count()) for g in my_groups(request.user).order_by("name")]
+    return {"m": m, "F": F, "kinds": KINDS, "groups": groups, "sel_groups": [to_int(x) for x in request.POST.getlist("groups")] if request.method == "POST" else []}
 
 
 @login_required
@@ -212,10 +233,15 @@ def meeting_detail(request, pk):
     if perms["invite"] and not m.is_ended:
         have = set(MeetingMemberModel.objects.filter(meeting=m, invited=True).values_list("user_id", flat=True))
         ctx["invite_json"] = _picker_json(_candidates(u, m), have)
+        ctx["group_json"] = _group_json(u)
     if owner and not m.is_ended:
         ass = UserModel.objects.on_site().filter(role="assistant", is_active=True, is_blocked=False).exclude(pk=m.host_id)
         have = set(MeetingMemberModel.objects.filter(meeting=m, role="cohost").values_list("user_id", flat=True))
         ctx["cohost_json"] = _picker_json(ass, have)
+    if mod and not m.is_ended:
+        host = request.get_host().split(":")[0]
+        ctx["no_https"] = not request.is_secure() and host not in ("localhost", "127.0.0.1")
+        ctx["no_turn"] = not S.has_turn()
     ctx.update(_history(m, u, mod, owner, request))
     return render(request, "meetings/detail.html", ctx)
 
@@ -274,7 +300,17 @@ def meeting_room(request, pk):
     ok, why = access.can_join(m, request.user)
     if not ok:
         return deny(request, why, "meetings")
-    return render(request, "meetings/room.html", {"m": m, "ice_obj": settings.MEETING_ICE_SERVERS})
+    return render(request, "meetings/room.html", {"m": m, "ice_obj": S.ice_servers(request.user)})
+
+
+@login_required
+def meeting_ping(request, pk):
+    """Xona sahifasi uchun: qayta ulanishdan oldin sessiya (JWT) yangilanadi va holat tekshiriladi."""
+    m = MeetingModel.objects.filter(pk=pk).first()
+    if not m:
+        return JsonResponse({"ok": False, "status": "deleted"})
+    ok, why = access.can_join(m, request.user)
+    return JsonResponse({"ok": ok, "status": m.status, "why": why, "ice": S.ice_servers(request.user)})
 
 
 @login_required
@@ -283,9 +319,13 @@ def meeting_invite(request, pk):
     m = _get(request, pk)
     if m.is_ended or not access.can_perm(m, request.user, "invite"):
         return JsonResponse({"ok": False, "error": "Ruxsat yo‘q"}, status=403)
-    ids = [to_int(x) for x in jload(request.body, {}).get("uids", [])]
-    users = _candidates(request.user, m).filter(pk__in=ids)
-    n = S.invite(m, request.user, users)
+    data = jload(request.body, {})
+    ids = [to_int(x) for x in data.get("uids", []) or []]
+    gids = [to_int(x) for x in data.get("gids", []) or []]
+    users = list(_candidates(request.user, m).filter(pk__in=ids)) if ids else []
+    if gids:
+        users += list(_group_users(request.user, m, gids))
+    n = S.invite(m, request.user, {u.pk: u for u in users}.values())
     return JsonResponse({"ok": True, "n": n})
 
 

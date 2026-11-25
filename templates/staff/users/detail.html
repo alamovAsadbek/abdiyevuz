@@ -2,8 +2,7 @@
 {% block title %}{{ u.full_name }}{% endblock %}{% block h1 %}{{ u.full_name }}{% endblock %}
 {% block actions %}{% if can_gift %}
 <button class="ab" data-gift-user="{{ u.pk }}">{% icon 'gift' %}<span>Kurs berish</span></button>{% endif %}
-{% if request.user|can:'notify.add' %}<a class="ab s" href="{% url 'message_new' %}?uid={{ u.pk }}">{% icon 'send'
-    %}<span>Xabar</span></a>{% endif %}
+{% if request.user|can:'notify.add' %}<a class="ab s" href="{% url 'message_new' %}?uid={{ u.pk }}">{% icon 'send' %}<span>Xabar</span></a>{% endif %}
 {% if request.user.is_main and not u.is_main %}<a class="ab s" href="?tab=perm"
                                                   title="Bo‘limlar bo‘yicha ruxsatlarni sozlash">{% icon 'key' %}<span>Ruxsatlar</span></a>{% endif %}
 {% if P.edit and not u.is_main %}
@@ -12,8 +11,8 @@
         data-next="{{ request.get_full_path }}">{% icon 'slash' %}<span>{% if u.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}</span>
 </button>{% endif %}
 {% if P.delete and not u.is_main %}
-<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?">{% icon
-    'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?"><span>O‘chirish</span>
+</button>{% endif %}{% endblock %}
 {% block content %}
 <div class="c p" style="margin-bottom:14px">
     <div class="row" style="gap:16px">
@@ -162,16 +161,12 @@
     {% endif %}
     <form method="post" action="{% url 'user_edit' u.pk %}">{% csrf_token %}
         <div class="fgrid">
-            {% include "partials/f.html" with label="Ism familiya" name="full_name" v=u.full_name ph="Ism familiya"
-            wide=1 req=1 %}
-            {% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=u.username ph="Foydalanuvchi
-            nomi" req=1 %}
+            {% include "partials/f.html" with label="Ism familiya" name="full_name" v=u.full_name ph="Ism familiya" wide=1 req=1 %}
+            {% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=u.username ph="Foydalanuvchi nomi" req=1 %}
             {% include "partials/f.html" with label="Telefon" name="phone" v=u.phone ph="+998 90 123 45 67" phone=1 %}
-            <div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options
-                value=u.role %}
+            <div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options value=u.role %}
             </div>
-            {% include "partials/f.html" with label="Yangi parol (ixtiyoriy)" name="password" ph="O‘zgartirmaslik uchun
-            bo‘sh qoldiring" ac="new-password" hint="Parol o‘zgarsa, foydalanuvchi barcha qurilmalardan chiqariladi" %}
+            {% include "partials/f.html" with label="Yangi parol (ixtiyoriy)" name="password" ph="O‘zgartirmaslik uchun bo‘sh qoldiring" ac="new-password" hint="Parol o‘zgarsa, foydalanuvchi barcha qurilmalardan chiqariladi" %}
         </div>
         {% if P.edit and not u.is_main %}
         <button class="bt mt">{% icon 'save' %} Saqlash</button>
@@ -181,8 +176,7 @@
 {% elif tab == "xabar" %}
 {% for d in deliveries %}
 <div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'send' %}</span><span class="sp"><b>{{ d.message.title }}</b><div
-        class="m">{{ d.message.created|dtm }} · {{ d.channel }}</div></span>{% if d.ok %}{% tag 'Yetkazildi' 'f' %}{%
-    else %}{% tag d.reason 'x' %}{% endif %}
+        class="m">{{ d.message.created|dtm }} · {{ d.channel }}</div></span>{% if d.ok %}{% tag 'Yetkazildi' 'f' %}{% else %}{% tag d.reason 'x' %}{% endif %}
 </div>{% empty %}
 <div class="c p m">Xabarnoma yo‘q</div>{% endfor %}
 {% elif tab == "faol" %}
@@ -220,9 +214,7 @@
 <div class="c p m">Tarix bo‘sh</div>{% endfor %}
 {% elif tab == "perm" %}
 <div class="c p">
-    <div class="row" style="margin-bottom:6px"><h3 class="sp">{% icon 'key' %} {% if pm_student %}Talaba ruxsatlari{%
-        else %}Yordamchi o‘qituvchi ruxsatlari{% endif %}</h3>{% if pm_custom %}{% tag 'Shaxsiy ruxsatlar' 'f' %}{% else
-        %}{% tag 'Rol standarti' %}{% endif %}
+    <div class="row" style="margin-bottom:6px"><h3 class="sp">{% icon 'key' %} {% if pm_student %}Talaba ruxsatlari{% else %}Yordamchi o‘qituvchi ruxsatlari{% endif %}</h3>{% if pm_custom %}{% tag 'Shaxsiy ruxsatlar' 'f' %}{% else %}{% tag 'Rol standarti' %}{% endif %}
     </div>
     <p class="m" style="margin-bottom:12px">{% if pm_student %}Talabaga faqat <b>«Ko‘rish»</b> ruxsati beriladi:
         belgilanmagan bo‘lim uning menyusida ko‘rinmaydi va unga kira olmaydi.{% else %}Har bir bo‘lim uchun <b>Ko‘rish

@@ -261,6 +261,32 @@ a.ib2{text-decoration:none;display:grid;place-items:center}a.pb{display:grid;pla
 .prow .pt{display:flex;gap:10px;align-items:center}.prow .pt .ic{width:36px;height:36px;border-radius:12px;background:var(--p2)}
 .pcells{display:flex;gap:6px;flex-wrap:wrap}
 .pc2{display:inline-flex;gap:6px;align-items:center;padding:6px 11px;border-radius:12px;border:1.5px solid var(--b);cursor:pointer;font-size:12.5px;font-weight:600;user-select:none;transition:.15s}
-.pc2 input{width:auto;margin:0;accent-color:var(--pr)}.pc2:has(input:checked){border-color:var(--pr);background:var(--p2);color:var(--pr)}
+.pc2 input[type=checkbox]{width:16px;height:16px;border-radius:5px;background:transparent;border:1.5px solid var(--m);flex:none;position:relative}.pc2 input[type=checkbox]::after{content:"";top:2px;left:5px;width:4px;height:8px;border-radius:0;background:transparent;box-shadow:none;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);transition:.15s}.pc2 input[type=checkbox]:checked{background:var(--pr);border-color:var(--pr)}.pc2 input[type=checkbox]:checked::after{left:5px;transform:rotate(45deg) scale(1)}.pc2:has(input:checked){border-color:var(--pr);background:var(--p2);color:var(--pr)}
 .pq{display:flex;gap:4px}.pq button{border:0;background:var(--p2);color:var(--pr);border-radius:10px;padding:6px 9px;font-size:11.5px;font-weight:700}
 @media(max-width:800px){.prow{grid-template-columns:1fr}}
+
+/* ---- dars sahifasi: ixcham pleyer + modul darslari */
+.lsn{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.lsn-main{min-width:0}.lsn .vw{width:100%;max-width:min(100%,calc(64vh * 16 / 9));margin:0 auto}
+.lsn-info{margin-top:14px}.lsn-meta{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;color:var(--m);font-size:13px}
+.lsn-meta>*{display:inline-flex;align-items:center;gap:5px;color:inherit}.lsn-meta .feather{width:15px;height:15px}.lsn-meta a:hover{color:var(--pr)}
+.lsn-desc{white-space:pre-line;margin-top:12px;line-height:1.6}
+.lsn-side{padding:12px;position:sticky;top:12px;max-height:calc(100vh - 24px);display:flex;flex-direction:column}
+.lsn-sh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 6px 10px;border-bottom:1px solid var(--b)}
+.lsn-list{overflow:auto;display:flex;flex-direction:column;gap:4px;padding-top:8px}
+.lsn-it{display:flex;gap:10px;align-items:center;padding:8px;border-radius:12px;color:inherit;cursor:pointer;transition:.15s}
+.lsn-it:hover{background:var(--p2)}.lsn-it.on{background:var(--p2);box-shadow:inset 3px 0 0 var(--pr)}.lsn-it.lk{opacity:.55;cursor:not-allowed}
+.lsn-it .no{width:28px;height:28px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--b);font-size:12px;font-weight:700}
+.lsn-it.on .no{background:var(--pr);color:#fff}.lsn-it .no .feather{width:14px;height:14px}
+.lsn-it b{display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lsn-it small{font-size:11.5px}
+.lsn-it .sp{min-width:0}
+.lsn-bc a.tag{display:inline-flex;align-items:center;gap:4px}.lsn-bc .feather{width:14px;height:14px}
+@media(max-width:1000px){.lsn{grid-template-columns:1fr}.lsn-side{position:static;max-height:420px}.lsn .vw{max-width:100%}}
+.lsn .vw:fullscreen{max-width:none;width:100%}
+
+/* ---- meeting: ulanish holati */
+.mr-tile[data-net=new]::before,.mr-tile[data-net=connecting]::before,.mr-tile[data-net=disconnected]::before,.mr-tile[data-net=failed]::before{content:attr(data-net-t);position:absolute;z-index:4;top:8px;left:8px;font-size:11.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:3px 9px;border-radius:9px}
+.mr-tile[data-net=failed]::before{background:rgba(239,91,107,.9)}
+.mr-net{position:fixed;z-index:60;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--dg);color:#fff;font-weight:700;font-size:13px;padding:8px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.mr-net[hidden],.mr-unmute[hidden]{display:none}.mr-net .feather{width:16px;height:16px}
+.mr-unmute{position:fixed;z-index:60;bottom:96px;left:50%;transform:translateX(-50%);box-shadow:0 8px 24px rgba(0,0,0,.3)}

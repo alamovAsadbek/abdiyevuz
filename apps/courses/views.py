@@ -39,8 +39,19 @@ def can_manage_lessons(user, course, action=None):
     return user.is_authenticated and user.is_teacher and user.can(lesson_section(course), action)
 
 
+def can_see_views(user, course):
+    """Ko'rishlar soni (necha marta, kim ko'rgan/ko'rmagan): asosiy o'qituvchi — doim;
+    boshqalar — kursda «Ko'rishlar sonini ko'rsatish» yoqilgan va «Ko'rishlar soni» ruxsati berilgan bo'lsa."""
+    if not user.is_authenticated:
+        return False
+    if user.is_main:
+        return True
+    return bool(course.show_views) and user.can_view("views")
+
+
 def lesson_rows(user, module):
     lessons = list(module.lessons.prefetch_related("tasks"))
+    sv = user.is_authenticated and user.is_teacher and can_see_views(user, module.course)
     seen, subs = set(), set()
     if user.is_authenticated and user.is_student:
         seen = set(LessonProgressModel.objects.filter(user=user, lesson__in=lessons).values_list("lesson_id", flat=True))
@@ -49,7 +60,7 @@ def lesson_rows(user, module):
     for l in lessons:
         out.append({"l": l, "lock": lock_reason(user, l), "done": lesson_done(user, l, seen, subs) if seen else False,
                     "ntasks": len([t for t in l.tasks.all() if t.is_active or (user.is_authenticated and user.is_teacher)]),
-                    "seen_n": LessonProgressModel.objects.filter(lesson=l).count() if user.is_authenticated and user.is_teacher else 0})
+                    "seen_n": LessonProgressModel.objects.filter(lesson=l, user__show_on_site=True).count() if sv else 0})
     return out
 
 
@@ -145,6 +156,7 @@ def course_new(request):
             return render(request, "staff/courses/form.html", {"d": P, "kinds": kinds})
         modular = P.get("is_modular") == "1"
         c = CourseModel.objects.create(title=t[:160], description=P.get("description", ""), is_modular=modular, sequential=bool(P.get("sequential")),
+                                       show_views=bool(P.get("show_views")),
                                        price=0 if modular else max(0, to_int(P.get("price"))))
         if not modular:
             c.first_module()
@@ -195,7 +207,7 @@ def course_detail(request, pk):
     info = course_info(c, lessons)
     ctx = {"c": c, "mg": mg, "perm": perm, "staff": staff, "info": info, "price_label": _price_label(c),
            "tabs": [(k, names[k]) for k in keys], "tab_hints": hints, "tab": tab,
-           "first_lesson": lessons[0] if lessons else None,
+           "first_lesson": lessons[0] if lessons else None, "sv": can_see_views(u, c),
            "teacher": UserModel.objects.on_site().filter(role="main").first()}
     module = c.first_module() if not c.is_modular else None
     ctx["module"] = module
@@ -245,6 +257,7 @@ def course_settings(request, pk):
     else:
         c.title, c.description = P["title"].strip(), P.get("description", "")
         c.login_required, c.sequential = bool(P.get("login_required")), bool(P.get("sequential"))
+        c.show_views = bool(P.get("show_views"))
         if not c.is_modular:
             c.price = max(0, to_int(P.get("price")))
         c.save()
@@ -348,7 +361,7 @@ def lesson_detail(request, pk):
     tab = request.GET.get("tab") if request.GET.get("tab") in keys else "video"
     ctx = {"l": l, "c": c, "m": m, "back": back, "mg": mg, "lp": lp, "tabs": [(k, names[k]) for k in keys], "tab": tab,
            "can_tasks": u.is_authenticated and u.is_teacher and u.can("tasks", "add"),
-           "see_tasks": u.is_authenticated and u.is_teacher and u.can_view("tasks"), "my_views": 0}
+           "see_tasks": u.is_authenticated and u.is_teacher and u.can_view("tasks"), "my_views": 0, "sv": can_see_views(u, c)}
     if u.is_authenticated and u.is_student and tab == "video":
         p, created = LessonProgressModel.objects.get_or_create(user=u, lesson=l)
         if not created and request.method == "GET" and not request.GET.get("noc"):
@@ -361,7 +374,7 @@ def lesson_detail(request, pk):
     i = [s.pk for s in sibs].index(l.pk)
     ctx["prev"], ctx["next"] = (sibs[i - 1] if i else None), (sibs[i + 1] if i + 1 < len(sibs) else None)
     if tab == "video":
-        ctx.update(n_mats=l.materials.count(), n_tasks=l.tasks.filter(is_active=True).count())
+        ctx.update(n_mats=l.materials.count(), n_tasks=l.tasks.filter(is_active=True).count(), sibs=lesson_rows(u, m), pos=i + 1, n_sibs=len(sibs))
         ctx["embed"] = embed_url(l.video_url) if l.video_kind == "link" else l.video_url
         ctx["direct"] = l.video_kind == "link" and not embed_url(l.video_url)
     elif tab == "mat":
@@ -375,6 +388,8 @@ def lesson_detail(request, pk):
         ctx["students"] = [{"u": s, "p": LessonProgressModel.objects.filter(user=s, lesson=l).first(),
                             "tasks": [(t, SubmissionModel.objects.filter(task=t, student=s).first()) for t in l.tasks.all()]} for s in en]
         ctx["n_seen"] = LessonProgressModel.objects.filter(user__in=en, lesson=l).count()
+        ctx["n_en"] = len(en)
+        ctx["n_unseen"] = max(0, len(en) - ctx["n_seen"])
     elif tab == "info":
         ctx.update(teacher=UserModel.objects.on_site().filter(role="main").first(), total=LessonModel.objects.filter(module__course=c).count(),
                    pct=round(completed_count(u, c)[0] / max(1, LessonModel.objects.filter(module__course=c).count()) * 100) if u.is_authenticated and u.is_student else None)

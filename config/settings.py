@@ -158,7 +158,15 @@ import json as _json
 MEETING_ICE_SERVERS = _json.loads(env("MEETING_ICE_SERVERS", '[{"urls": ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]}]'))
 MEETING_REC_MAX_MB = int(env("MEETING_REC_MAX_MB", "2048"))
 MEETING_LONG_MINUTES = int(env("MEETING_LONG_MINUTES", "60"))
-MEETING_MAX_PARTICIPANTS = int(env("MEETING_MAX_PARTICIPANTS", "8"))   # mesh: 8 tagacha tavsiya etiladi
+MEETING_MAX_PARTICIPANTS = int(env("MEETING_MAX_PARTICIPANTS", "30"))  # mesh: video sifati qatnashchilar soniga qarab avtomatik pasayadi
+# TURN server (coturn) — turli tarmoqlardagi (mobil internet, NAT ortidagi) talabalar ulana olishi uchun.
+#   MEETING_TURN_URLS="turn:turn.example.uz:3478,turns:turn.example.uz:5349"
+#   MEETING_TURN_SECRET — coturn'dagi static-auth-secret (vaqtinchalik login/parol avtomatik yaratiladi), yoki
+#   MEETING_TURN_USER / MEETING_TURN_PASSWORD — doimiy login/parol.
+MEETING_TURN_URLS = [x.strip() for x in env("MEETING_TURN_URLS", "").split(",") if x.strip()]
+MEETING_TURN_SECRET = env("MEETING_TURN_SECRET", "")
+MEETING_TURN_USER = env("MEETING_TURN_USER", "")
+MEETING_TURN_PASSWORD = env("MEETING_TURN_PASSWORD", "")
 MEETING_EMPTY_END_MINUTES = int(env("MEETING_EMPTY_END_MINUTES", "10"))
 
 LOGGING = {"version": 1, "disable_existing_loggers": False,

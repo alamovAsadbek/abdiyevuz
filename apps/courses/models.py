@@ -17,6 +17,9 @@ class CourseModel(models.Model):
     sequential = models.BooleanField("Ketma-ket ko‘rish", default=True)
     is_active = models.BooleanField("Aktiv", default=True)
     login_required = models.BooleanField("Ko‘rish uchun kirish majburiy", default=False)
+    show_views = models.BooleanField("Ko‘rishlar sonini ko‘rsatish", default=True,
+                                     help_text="O‘chirilsa — darslar necha marta ko‘rilgani va kim ko‘rgani/ko‘rmagani faqat asosiy o‘qituvchiga ko‘rinadi. "
+                                               "Yoqilsa — «Ko‘rishlar soni» ruxsati berilgan foydalanuvchilarga ham ko‘rinadi.")
     group = models.OneToOneField("accounts.GroupModel", null=True, blank=True, on_delete=models.CASCADE, related_name="course")
     created = models.DateTimeField(auto_now_add=True)
 

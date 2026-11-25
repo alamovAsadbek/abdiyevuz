@@ -7,7 +7,7 @@
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const KM = window.KM, toast = KM.toast, fx = KM.fx;
   const PK = R.dataset.pk, ME = +R.dataset.me;
-  const ICE = JSON.parse($("#ice").textContent || "[]");
+  let ICE = JSON.parse($("#ice").textContent || "[]");
   const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e };
   const ic = n => { const i = document.createElement("i"); i.setAttribute("data-feather", n); return i };
   const secure = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -41,24 +41,44 @@
   $("#lb-cam").onclick = async () => { if (!secure) return toast("Kamera/mikrofon uchun HTTPS kerak", "x"); want.cam = !want.cam; if (!(await lobbyMedia())) want.cam = false; setBtn($("#lb-cam"), want.cam, "video", "video-off") };
   $("#join").onclick = () => {
     if (prevStream) { prevStream.getTracks().forEach(t => t.stop()); prevStream = null }
-    ensureCtx(); $("#lobby").hidden = true; $("#mr-app").hidden = false; connect();
+    ensureCtx(); $("#lobby").hidden = true; $("#mr-app").hidden = false; reconnect();
   };
 
   /* ------------------------------------------------------------------ websocket */
   const send = o => { try { ws && ws.readyState === 1 && ws.send(JSON.stringify(o)) } catch (_) {} };
   function connect() {
+    if (ended) return;
     ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + `/ws/meeting/${PK}/`);
-    ws.onopen = () => { retry = 0 };
+    ws.onopen = () => { retry = 0; netBanner(false) };
     ws.onmessage = ev => { let d; try { d = JSON.parse(ev.data) } catch (_) { return } handle(d) };
     ws.onclose = ev => {
       if (ended) return;
       if (ev.code >= 4400 && ev.code < 4500) return;       // denied / replaced / kicked — o'zimiz hal qilganmiz
       if (ev.code === 4000) return;
-      closeAllPeers();
-      if (retry++ < 8) { toast("Aloqa uzildi, qayta ulanmoqda…", "x"); setTimeout(connect, Math.min(8000, 800 * retry)) }
-      else over("Aloqa uzildi", "Internetni tekshirib, sahifani qayta yuklang.");
+      closeAllPeers(); retryLater();
     };
   }
+  function retryLater() {
+    if (ended) return;
+    if (retry++ < 12) { netBanner(true); setTimeout(reconnect, Math.min(10000, 700 * retry)) }
+    else over("Aloqa uzildi", "Internetni tekshirib, sahifani qayta yuklang.");
+  }
+  async function reconnect() {   // sessiya (JWT) yangilanadi, meeting holati va TURN ma'lumotlari olinadi
+    if (ended) return;
+    let j = null;
+    try {
+      const r = await fetch(`/meetings/${PK}/ping/`, { credentials: "same-origin", headers: { "X-Requested-With": "fetch", "Accept": "application/json" } });
+      if (r.status === 401 || r.redirected) return over("Sessiya tugagan", "Qaytadan tizimga kiring va meetingga qo‘shiling.");
+      if (r.status === 403) return over("Kirib bo‘lmadi", "Sizda uchrashuvlar bo‘limiga ruxsat yo‘q.");
+      if ((r.headers.get("content-type") || "").includes("json")) j = await r.json();
+    } catch (_) { return retryLater() }   // internet yo'q — keyinroq
+    if (!j) return retryLater();
+    if (j.ice && j.ice.length) ICE = j.ice;
+    if (!j.ok) return over(j.status === "ended" ? "Meeting yakunlandi" : j.status === "deleted" ? "Meeting o‘chirilgan" : "Kirib bo‘lmadi", j.why || "");
+    connect();
+  }
+  function netBanner(on) { const b = $("#mr-net"); if (b) b.hidden = !on }
+  addEventListener("online", () => { if (!ended && $("#lobby").hidden && (!ws || ws.readyState > 1)) { retry = 0; reconnect() } });
   setInterval(() => send({ type: "ping" }), 25000);
 
   function over(t, p) {
@@ -88,6 +108,7 @@
       case "caps_of": { const r = roster.get(d.uid); if (r) { r.caps = d.caps; r.state = d.state; renderPeople(); renderTile(d.uid) } return }
       case "chat_toggle": chatOn = d.on; applyCaps(); toast(d.on ? "Chat yoqildi" : "Chat o‘chirildi"); return;
       case "refresh_caps": location.reload(); return;
+      case "resync": closeAllPeers(); try { ws.close(4100) } catch (_) {} return;
     }
   }
 
@@ -98,19 +119,19 @@
     d.peers.forEach(p => { p.online = true; roster.set(p.uid, p) });
     $("#msgs").replaceChildren(); d.comments.forEach(c => addMsg(c, true)); scroll();
     closeAllPeers(); $("#grid").replaceChildren(); roster.forEach((r, uid) => { if (r.online) renderTile(uid) });
-    d.peers.forEach(p => { newPeer(p.uid, true) });
+    d.peers.forEach(p => { newPeer(p.uid, true) }); retune();
     applyCaps(); renderPeople();
     // lobbyda tanlangan qurilmalar
     if (want.mic) toggle("mic", true); if (want.cam) toggle("cam", true);
   }
   function onJoined(p) {
-    p.online = true; roster.set(p.uid, p); closePeer(p.uid); newPeer(p.uid, false);   // yangi qatnashchi o'zi offer yuboradi
+    p.online = true; roster.set(p.uid, p); closePeer(p.uid); newPeer(p.uid, false); retune();   // yangi qatnashchi o'zi offer yuboradi
     renderTile(p.uid); renderPeople(); toast(`${p.name} qo‘shildi`);
   }
   function onLeft(d) {
     const r = roster.get(d.uid);
     if (r) { r.online = false; r.state = {}; }
-    closePeer(d.uid); const t = $(`#tile-${d.uid}`); if (t) t.remove(); unwatch(d.uid); if (pinned === d.uid) pinned = null; if (activeUid === d.uid) activeUid = null; layout(); renderPeople();
+    closePeer(d.uid); retune(); const t = $(`#tile-${d.uid}`); if (t) t.remove(); unwatch(d.uid); if (pinned === d.uid) pinned = null; if (activeUid === d.uid) activeUid = null; layout(); renderPeople();
     if (r) toast(d.kicked ? `${r.name} chiqarib yuborildi` : `${r.name} chiqib ketdi`);
     if (d.kicked && r) roster.delete(d.uid);
   }
@@ -119,15 +140,20 @@
   const cur = kind => kind === "audio" ? tracks.audio : (tracks.screen || tracks.cam);
   function newPeer(uid, offerer) {
     const pc = new RTCPeerConnection({ iceServers: ICE });
-    const P = { pc, ms: new MediaStream(), polite: ME > uid, making: false, ignore: false, tx: {} };
-    peers.set(uid, P);
-    pc.ontrack = e => { P.ms.addTrack(e.track); if (e.track.kind === "audio") watchAudio(uid, e.track); const v = $(`#tile-${uid} video`); if (v && v.srcObject !== P.ms) v.srcObject = P.ms; v && v.play && v.play().catch(() => {}) };
+    const P = { pc, ms: new MediaStream(), polite: ME > uid, making: false, ignore: false, tx: {}, cand: early.get(uid) || [], failT: null };
+    early.delete(uid); peers.set(uid, P);
+    pc.ontrack = e => { P.ms.addTrack(e.track); if (e.track.kind === "audio") watchAudio(uid, e.track); const v = $(`#tile-${uid} video`); if (v && v.srcObject !== P.ms) v.srcObject = P.ms; if (v) playV(v) };
+    pc.onconnectionstatechange = () => {
+      const st = pc.connectionState; netOf(uid, st);
+      clearTimeout(P.failT);
+      if (st === "disconnected") P.failT = setTimeout(() => { if (pc.connectionState === "disconnected") try { pc.restartIce() } catch (_) {} }, 4000);
+      if (st === "failed") { try { pc.restartIce() } catch (_) {} P.failT = setTimeout(() => { if (pc.connectionState === "failed" && peers.get(uid) === P) warnFail(uid) }, 12000) }
+    };
     pc.onicecandidate = e => { if (e.candidate) send({ type: "signal", to: uid, data: { c: e.candidate } }) };
     pc.onnegotiationneeded = async () => {
       try { P.making = true; await pc.setLocalDescription(); send({ type: "signal", to: uid, data: { d: pc.localDescription } }) }
       catch (_) {} finally { P.making = false }
     };
-    pc.oniceconnectionstatechange = () => { if (pc.iceConnectionState === "failed") try { pc.restartIce() } catch (_) {} };
     if (offerer) { P.tx.audio = pc.addTransceiver("audio", { direction: "sendrecv" }); P.tx.video = pc.addTransceiver("video", { direction: "sendrecv" }); attach(P) }
     return P;
   }
@@ -138,28 +164,60 @@
     });
     tune(P);
   }
-  function tune(P) {   // tarmoq tejash: mesh uchun video bitrate cheklovi
+  function tune(P) {   // tarmoq tejash: mesh'da har bir qatnashchiga alohida oqim — soniga qarab sifat pasayadi
     const s = P.tx.video && P.tx.video.sender; if (!s || !s.getParameters) return;
-    try { const p = s.getParameters(); if (!p.encodings || !p.encodings.length) p.encodings = [{}]; p.encodings[0].maxBitrate = tracks.screen ? 1500000 : 700000; s.setParameters(p).catch(() => {}) } catch (_) {}
-  }
-  async function onSignal(m) {
-    let P = peers.get(m.from);
-    if (!P) { if (!(m.data && m.data.d)) return; P = newPeer(m.from, false) }
-    const { pc } = P, d = m.data;
+    const n = Math.max(1, peers.size), scr = !!tracks.screen;
+    const br = scr ? Math.max(350000, Math.min(1500000, 4000000 / n)) : Math.max(110000, Math.min(700000, 2500000 / n));
     try {
-      if (d.d) {
-        const collision = d.d.type === "offer" && (P.making || pc.signalingState !== "stable");
-        P.ignore = !P.polite && collision; if (P.ignore) return;
-        await pc.setRemoteDescription(d.d);
-        if (d.d.type === "offer") {
-          pc.getTransceivers().forEach(t => { const k = t.receiver.track.kind; if (!P.tx[k]) P.tx[k] = t });
-          attach(P);
-          await pc.setLocalDescription(); send({ type: "signal", to: m.from, data: { d: pc.localDescription } });
-        }
-      } else if (d.c) { try { await pc.addIceCandidate(d.c) } catch (e) { if (!P.ignore) throw e } }
-    } catch (e) { console.warn("signal", e) }
+      const p = s.getParameters(); if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = Math.round(br); p.encodings[0].scaleResolutionDownBy = scr ? 1 : n > 12 ? 2 : n > 5 ? 1.5 : 1;
+      s.setParameters(p).catch(() => {});
+    } catch (_) {}
   }
-  function closePeer(uid) { const P = peers.get(uid); if (!P) return; try { P.pc.close() } catch (_) {} peers.delete(uid) }
+  function retune() { peers.forEach(tune) }
+  /* signal xabarlari har bir qatnashchi uchun navbat bilan qayta ishlanadi (aks holda ICE nomzodlari
+     remote description'dan oldin kelib, yo'qolib ketadi va ulanish o'rnatilmaydi) */
+  const sigQ = new Map(), early = new Map();
+  function onSignal(m) {
+    const q = (sigQ.get(m.from) || Promise.resolve()).then(() => doSignal(m)).catch(e => console.warn("signal", e));
+    sigQ.set(m.from, q);
+  }
+  async function flushCand(P) { const L = P.cand.splice(0); for (const c of L) { try { await P.pc.addIceCandidate(c) } catch (_) {} } }
+  async function doSignal(m) {
+    const d = m.data || {};
+    let P = peers.get(m.from);
+    if (!P) {
+      if (!d.d) { if (d.c) { const L = early.get(m.from) || []; L.push(d.c); early.set(m.from, L.slice(-50)) } return }
+      P = newPeer(m.from, false); retune();
+    }
+    const { pc } = P;
+    if (d.d) {
+      const collision = d.d.type === "offer" && (P.making || pc.signalingState !== "stable");
+      P.ignore = !P.polite && collision; if (P.ignore) return;
+      if (d.d.type === "answer" && pc.signalingState !== "have-local-offer") return;   // eskirgan javob
+      await pc.setRemoteDescription(d.d);
+      await flushCand(P);
+      if (d.d.type === "offer") {
+        pc.getTransceivers().forEach(t => { const k = t.receiver.track.kind; if (!P.tx[k]) P.tx[k] = t });
+        attach(P);
+        await pc.setLocalDescription(); send({ type: "signal", to: m.from, data: { d: pc.localDescription } });
+      }
+    } else if (d.c) {
+      if (!pc.remoteDescription) { P.cand.push(d.c); return }
+      try { await pc.addIceCandidate(d.c) } catch (e) { if (!P.ignore) console.warn("ice", e) }
+    }
+  }
+  function closePeer(uid) { const P = peers.get(uid); if (!P) return; clearTimeout(P.failT); try { P.pc.close() } catch (_) {} peers.delete(uid); sigQ.delete(uid); early.delete(uid) }
+  const NET = { "new": "Ulanmoqda…", connecting: "Ulanmoqda…", disconnected: "Aloqa uzildi…", failed: "Ulanib bo‘lmadi" };
+  function netOf(uid, st) { const t = $(`#tile-${uid}`); if (!t) return; t.dataset.net = NET[st] ? st : "ok"; t.dataset.netT = NET[st] || "" }
+  const failed = new Set();
+  function warnFail(uid) {
+    if (failed.has(uid)) return; failed.add(uid); const r = roster.get(uid);
+    toast(`${r ? r.name : "Qatnashchi"} bilan ulanib bo‘lmadi — tarmoq cheklangan bo‘lishi mumkin (TURN server kerak). Sahifani yangilab ko‘ring.`, "x");
+  }
+  /* brauzer ovozli videoni avtomatik ijro etishni to'xtatsa — «Ovozni yoqish» tugmasi */
+  function playV(v) { if (!v || !v.play) return; const p = v.play(); if (p && p.catch) p.catch(e => { if (e && e.name === "NotAllowedError") { const b = $("#mr-unmute"); if (b) b.hidden = false } }) }
+  { const b = $("#mr-unmute"); if (b) b.onclick = () => { ensureCtx(); $$("#grid video").forEach(v => { if (!v.muted) v.play().catch(() => {}) }); b.hidden = true } }
   function closeAllPeers() { [...peers.keys()].forEach(closePeer) }
 
   /* ------------------------------------------------------------------ mahalliy media */
@@ -300,7 +358,7 @@
       const pin = el("div", "mr-pin", "📌"); pin.hidden = true; t.append(v, av, nm, st, pin); $("#grid").appendChild(t);
       t.onclick = () => { pinned = pinned === uid ? null : uid; if (mode === "grid") mode = "speaker"; layout() }; layout();
       if (uid === ME) { v.srcObject = new MediaStream() }
-      else { const P = peers.get(uid); if (P) v.srcObject = P.ms }
+      else { const P = peers.get(uid); if (P) { v.srcObject = P.ms; netOf(uid, P.pc.connectionState) } }
     }
     const s = { mic: false, cam: false, screen: false, hand: false, ...(uid === ME ? state : (r.state || {})) };
     const v = $("video", t);
@@ -311,7 +369,7 @@
     $(".mr-nm", t).textContent = (uid === ME ? "Siz" : r.name) + (r.role === "host" ? " · boshlovchi" : r.role === "cohost" ? " · yordamchi" : "");
     const st = $(".mr-st", t); st.replaceChildren();
     if (s.hand) st.appendChild(ic("hand")); if (!s.mic) st.appendChild(ic("mic-off")); fx();
-    if (uid !== ME) { v.play && v.play().catch(() => {}) }
+    if (uid !== ME) playV(v)
   }
 
   /* ------------------------------------------------------------------ qatnashchilar paneli */

@@ -1,4 +1,8 @@
+import base64
+import hashlib
+import hmac
 import re
+import time
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -46,6 +50,24 @@ def ser_user(meeting, m):
     return {"uid": u.pk, "name": u.full_name or u.username, "username": u.username, "ini": u.initials, "role": role_of(meeting, u, m),
             "online": m.online, "state": {**DEFAULT_STATE, **(m.state or {})}, "caps": access.effective(meeting, u, m),
             "mperms": m.mperms or [], "banned": m.banned}
+
+
+STALE_SECONDS = 150
+
+
+def drop_stale(meeting_id):
+    """Ping yubormay qo'ygan (server qayta ishga tushgan, brauzer yopilgan) «onlayn» qatnashchilarni chiqaradi."""
+    from datetime import timedelta
+    from django.db.models import Q
+    now = timezone.now()
+    qs = MeetingMemberModel.objects.filter(meeting_id=meeting_id, online=True).filter(Q(seen_at__isnull=True) | Q(seen_at__lt=now - timedelta(seconds=STALE_SECONDS)))
+    uids = list(qs.values_list("user_id", flat=True))
+    if uids:
+        qs.update(online=False, left_at=now)
+        MeetingSessionModel.objects.filter(meeting_id=meeting_id, user_id__in=uids, left_at__isnull=True).update(left_at=now)
+        if not MeetingMemberModel.objects.filter(meeting_id=meeting_id, online=True).exists():
+            MeetingModel.objects.filter(pk=meeting_id, status="live", empty_since__isnull=True).update(empty_since=now)
+    return uids
 
 
 def roster(meeting, only_online=False):
@@ -150,6 +172,25 @@ def invite(meeting, actor, users):
     if n:
         log(meeting, actor, "invite", note=f"{n} ta")
     return n
+
+
+def ice_servers(user):
+    """Brauzerga beriladigan STUN/TURN serverlar. TURN uchun coturn REST (vaqtinchalik parol) yoki doimiy login."""
+    from django.conf import settings
+    out = list(settings.MEETING_ICE_SERVERS)
+    urls = settings.MEETING_TURN_URLS
+    if urls and settings.MEETING_TURN_SECRET:
+        name = f"{int(time.time()) + 12 * 3600}:{user.pk}"
+        pwd = base64.b64encode(hmac.new(settings.MEETING_TURN_SECRET.encode(), name.encode(), hashlib.sha1).digest()).decode()
+        out.append({"urls": urls, "username": name, "credential": pwd})
+    elif urls and settings.MEETING_TURN_USER:
+        out.append({"urls": urls, "username": settings.MEETING_TURN_USER, "credential": settings.MEETING_TURN_PASSWORD})
+    return out
+
+
+def has_turn():
+    from django.conf import settings
+    return bool(settings.MEETING_TURN_URLS and (settings.MEETING_TURN_SECRET or settings.MEETING_TURN_USER))
 
 
 # ---------------------------------------------------------------- yozib olish

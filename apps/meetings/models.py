@@ -89,6 +89,7 @@ class MeetingMemberModel(models.Model):
     joined_at = models.DateTimeField(null=True, blank=True)
     left_at = models.DateTimeField(null=True, blank=True)
     online = models.BooleanField(default=False)
+    seen_at = models.DateTimeField(null=True, blank=True)   # oxirgi «ping» — uzilib qolgan (yopilmagan) ulanishlarni aniqlash uchun
     state = models.JSONField(default=dict, blank=True)   # {"mic":bool,"cam":bool,"screen":bool,"hand":bool}
     created = models.DateTimeField(auto_now_add=True)
 

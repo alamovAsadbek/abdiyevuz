@@ -6,8 +6,10 @@
 {% include "partials/f.html" with label="Boshlanish vaqti (ixtiyoriy)" name="start_at" v=F.start_at type="datetime-local" ph="Sana va vaqt" %}
 <div><div class="m" style="margin-bottom:6px">Meeting turi</div>{% include "partials/seg.html" with name="kind" value=F.kind options=kinds %}</div>
 <div style="grid-column:1/-1" class="m">Ochiq — tizimga kirgan har bir foydalanuvchi qo‘shila oladi va u panelida ko‘rinadi. Yopiq — faqat siz taklif qilgan foydalanuvchilar ko‘radi va qo‘shila oladi.</div>
+{% if groups %}<div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Guruhlarni taklif qilish <span class="hint" data-tip="Tanlangan guruhlardagi barcha talabalar meetingga taklif qilinadi va ularga xabarnoma boradi. Keyin ham «Qatnashchilar» bo‘limidan qo‘shishingiz mumkin">?</span></div>
+<div class="pcells">{% for gid, gname, gn in groups %}<label class="pc2"><input type="checkbox" name="groups" value="{{ gid }}" {% if gid in sel_groups %}checked{% endif %}>{{ gname }} <span class="m">({{ gn }})</span></label>{% endfor %}</div></div>{% endif %}
 {% include "partials/check.html" with name="chat_on" on=F.chat_on title="Chat va izohlar yoqilgan" desc="@username bilan foydalanuvchini belgilash mumkin" %}
 {% include "partials/check.html" with name="mic_default" on=F.mic_default title="Qatnashchilar mikrofonni yoqa oladi" %}
-{% include "partials/check.html" with name="cam_default" on=F.cam_default title="Qatnashchilar kamerani yoqa oladi" %}
+{% include "partials/check.html" with name="cam_default" on=F.cam_default title="Qatnashchilar kamerani yoqa oladi" desc="Katta guruhda (10+ kishi) o‘chirib qo‘yish tavsiya etiladi — internet tejaladi, kerakli talabaga alohida ruxsat berasiz" %}
 {% include "partials/check.html" with name="screen_default" on=F.screen_default title="Qatnashchilar ekranni ulasha oladi" desc="Har bir qatnashchiga alohida ruxsat ham berish mumkin" %}
 </div><button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endblock %}
