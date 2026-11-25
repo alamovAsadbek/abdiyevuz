@@ -20,7 +20,8 @@ from apps.core.models import EVENTS, log_event
 from apps.core.perms import deny, login_required, main_required, perm_required, post_only
 from apps.courses.services import my_groups, scoped_students, student_in_scope
 from apps.notifications.services import notify
-from .models import PERMS, GroupModel, LoginHistoryModel, UserModel
+from . import permissions as PM
+from .models import GroupModel, LoginHistoryModel, UserModel
 from .utils import UN_RE, device_of, gen_password, norm_phone, phone_ok, slugify_name, unique_username
 
 ROLE_OPTS = [(UserModel.STUDENT, "Talaba"), (UserModel.ASSISTANT, "Yordamchi o‘qituvchi"), (UserModel.MAIN, "Asosiy o‘qituvchi")]
@@ -177,14 +178,39 @@ def profile(request):
 
 @login_required
 def settings_view(request):
-    return render(request, "shared/settings.html", {
-        "theme_opts": [("light", "Yorug‘"), ("dark", "Qorong‘i")], "mode_opts": [("cards", "Kartalar"), ("table", "Jadval")],
-        "act_opts": [("top", "Tepada"), ("float", "Suzuvchi panel")]})
+    ctx = {"theme_opts": [("light", "Yorug‘"), ("dark", "Qorong‘i")], "mode_opts": [("cards", "Kartalar"), ("table", "Jadval")],
+           "act_opts": [("top", "Tepada"), ("float", "Suzuvchi panel")]}
+    if request.user.is_main:
+        role = request.GET.get("role") if request.GET.get("role") in ("assistant", "student") else "assistant"
+        ctx.update(role_tab=role, role_tabs=[("assistant", "Yordamchi o‘qituvchi"), ("student", "Talaba")],
+                   role_rows=PM.matrix(role, PM.role_defaults(role)))
+    return render(request, "shared/settings.html", ctx)
+
+
+@main_required
+@post_only
+def role_perms(request):
+    """Rol standartini saqlash: shaxsiy ruxsati yo'q barcha yordamchi / talabalarga darhol amal qiladi."""
+    from apps.core.models import SiteSettingsModel
+    role = request.POST.get("role")
+    if role not in ("assistant", "student"):
+        return deny(request, "Noto‘g‘ri rol", "settings")
+    s = SiteSettingsModel.get()
+    data = dict(s.role_perms or {})
+    if request.POST.get("reset") == "1":
+        data.pop(role, None)
+        messages.success(request, "Tizim standarti tiklandi")
+    else:
+        data[role] = PM.from_post(role, request.POST)
+        messages.success(request, "Rol standarti saqlandi")
+    s.role_perms = data
+    s.save(update_fields=["role_perms"])
+    return redirect(reverse("settings") + f"?role={role}#roles")
 
 
 # ---------------------------------------------------------------- users (staff)
 def _user_scope(request):
-    qs = UserModel.objects.exclude(pk=request.user.pk)
+    qs = UserModel.objects.on_site().exclude(pk=request.user.pk)
     if request.user.is_assistant:
         qs = scoped_students(request.user).exclude(pk=request.user.pk)
     return qs
@@ -197,17 +223,23 @@ def _get_user(request, pk):
 
 @perm_required("users")
 def users(request):
-    can_act = request.user.can("activity")
+    me = request.user
+    can_act = me.can_view("activity")
+    P = me.acts("users")
     rows = []
     for u in _user_scope(request).prefetch_related("member_groups").order_by("-id"):
         gs = [g.name for g in u.member_groups.all()]
         st = T("Bloklangan", "x") if u.is_blocked else T("Faol", "f")
         acts = []
-        if request.user.can("gift") and u.is_student:
+        if me.can("gift", "use") and u.is_student:
             acts.append(A("gift", "Kurs berish", url=reverse("user_detail", args=[u.pk]) + "?tab=kurs&gift=1"))
-        acts += [A("edit-2", "Tahrirlash", url=reverse("user_detail", args=[u.pk]) + "?tab=info"),
-                 A("slash", "Bloklash", post=reverse("user_block", args=[u.pk]), confirm="Blokdan chiqarilsinmi?" if u.is_blocked else "Foydalanuvchi bloklansinmi?"),
-                 A("trash-2", "O‘chirish", post=reverse("user_delete", args=[u.pk]), confirm=f"{u.full_name} o‘chirilsinmi?", cls="x")]
+        if me.is_main and not u.is_main:
+            acts.append(A("key", "Ruxsatlar", url=reverse("user_detail", args=[u.pk]) + "?tab=perm"))
+        if P["edit"] and not u.is_main:
+            acts += [A("edit-2", "Tahrirlash", url=reverse("user_detail", args=[u.pk]) + "?tab=info"),
+                     A("slash", "Bloklash", post=reverse("user_block", args=[u.pk]), confirm="Blokdan chiqarilsinmi?" if u.is_blocked else "Foydalanuvchi bloklansinmi?")]
+        if P["delete"] and not u.is_main:
+            acts.append(A("trash-2", "O‘chirish", post=reverse("user_delete", args=[u.pk]), confirm=f"{u.full_name} o‘chirilsinmi?", cls="x"))
         cells = [u.full_name, "@" + u.username, u.uid, u.get_role_display(), ", ".join(gs) or "—", st]
         if can_act:
             cells.append(T("Onlayn", "f") if u.online else T("Oxirgi: " + ("%s" % u.last_seen.strftime("%d.%m %H:%M") if u.last_seen else "kirmagan")))
@@ -220,7 +252,7 @@ def users(request):
     if can_act:
         filters.append(("on", "Faollik", ["Onlayn", "Oflayn"]))
     add = [{"icon": "users", "label": "Ko‘plab qo‘shish", "url": reverse("user_bulk"), "cls": "s"},
-           {"icon": "user-plus", "label": "Qo‘shish", "url": reverse("user_new")}]
+           {"icon": "user-plus", "label": "Qo‘shish", "url": reverse("user_new")}] if P["add"] else None
     return render(request, "staff/users/list.html", {"L": make_list(request, rows, headers, filters, add)})
 
 
@@ -257,7 +289,8 @@ def _validate_user(request, existing=None):
 
 @perm_required("users")
 def user_new(request):
-    ctx = {"perm_list": PERMS, "role_options": _role_options(request), "pw": gen_password(), "group_options": [("", "Guruhsiz")] + [(g.pk, g.name) for g in my_groups(request.user)]}
+    ctx = {"role_options": _role_options(request), "pw": gen_password(), "group_options": [("", "Guruhsiz")] + [(g.pk, g.name) for g in my_groups(request.user)],
+           "pm_assistant": PM.matrix("assistant", PM.role_defaults("assistant")), "pm_student": PM.matrix("student", PM.role_defaults("student"))}
     if request.method == "POST":
         d, err = _validate_user(request)
         gid = request.POST.get("group")
@@ -270,8 +303,8 @@ def user_new(request):
         else:
             n = UserModel.objects.create_user(username=d["username"], password=d["password"], full_name=d["full_name"],
                                               phone=norm_phone(d["phone"]), role=d["role"])
-            if request.user.is_main and n.is_assistant:
-                n.perms = sorted(c for c in request.POST.getlist("perm") if c in [p[0] for p in PERMS])
+            if request.user.is_main and not n.is_main and request.POST.get("custom_perms") == "1":
+                n.set_grants(PM.from_post(n.role, request.POST, "pa" if n.is_assistant else "ps"))
                 n.save(update_fields=["perms"])
             if grp and n.is_student:
                 grp.members.add(n)
@@ -319,13 +352,16 @@ def user_detail(request, pk):
     from apps.notifications.models import MessageDeliveryModel
     u = _get_user(request, pk)
     me = request.user
-    keys = ["kurs", "guruh", "test", "vazifa", "info"] + (["xabar"] if me.can("notify") else []) + (["faol"] if me.can("activity") else []) + ["tarix"]
-    if me.is_main and u.is_assistant:
+    keys = ["kurs", "guruh", "test", "vazifa", "info"] + (["xabar"] if me.can_view("notify") else []) + (["faol"] if me.can_view("activity") else []) + ["tarix"]
+    if not u.is_student:
+        keys = [k for k in keys if k not in ("kurs", "test", "vazifa")]
+    if me.is_main and not u.is_main:
         keys.append("perm")
     names = {"kurs": "Kurslari", "guruh": "Guruhlari", "test": "Testlari", "vazifa": "Vazifalar", "info": "Ma‘lumotlar", "perm": "Ruxsatlar",
              "xabar": "Xabarnomalar", "faol": "Faollik", "tarix": "Tarix"}
-    tab = request.GET.get("tab") if request.GET.get("tab") in keys else "kurs"
-    ctx = {"u": u, "tabs": [(k, names[k]) for k in keys], "tab": tab, "role_options": _role_options(request)}
+    tab = request.GET.get("tab") if request.GET.get("tab") in keys else keys[0]
+    ctx = {"u": u, "tabs": [(k, names[k]) for k in keys], "tab": tab, "role_options": _role_options(request), "P": me.acts("users"),
+           "can_gift": me.can("gift", "use") and u.is_student}
     if tab == "kurs":
         rows = []
         for a in CourseAccessModel.objects.filter(user=u).select_related("course", "module", "granted_by"):
@@ -334,7 +370,6 @@ def user_detail(request, pk):
             done, tot = completed_count(u, a.course)
             rows.append({"a": a, "pct": round(done / tot * 100) if tot else 0})
         ctx["accesses"] = rows
-        ctx["can_gift"] = me.can("gift") and u.is_student
     elif tab == "guruh":
         ctx["ugroups"] = u.member_groups.all()
         ctx["free_groups"] = json.dumps([{"id": g.pk, "t": g.name, "s": g.kind_label} for g in my_groups(me).exclude(members=u)], ensure_ascii=False)
@@ -350,7 +385,7 @@ def user_detail(request, pk):
     elif tab == "tarix":
         ctx["events"] = EventModel.objects.filter(Q(user=u) | Q(actor=u)).select_related("course", "user", "actor", "group")[:100]
     elif tab == "perm":
-        ctx["perm_list"] = PERMS
+        ctx.update(_perm_ctx(u))
     return render(request, "staff/users/detail.html", ctx)
 
 
@@ -401,15 +436,26 @@ def user_delete(request, pk):
     return redirect("users")
 
 
+def _perm_ctx(u):
+    """Ruxsatlar matritsasi (rolga mos bo'limlar va amallar)."""
+    return {"pm_rows": PM.matrix(u.role, u.grants), "pm_custom": u.has_custom_grants, "pm_student": u.is_student,
+            "pm_actions": [(a, PM.ACTION_LABELS[a], PM.ACTION_HINTS[a]) for a in (PM.CRUD if u.is_assistant else [PM.VIEW])]}
+
+
 @main_required
 @post_only
 def user_perm(request, pk):
-    u = get_object_or_404(UserModel, pk=pk, role=UserModel.ASSISTANT)
-    code = request.POST.get("code")
-    if code not in [p[0] for p in PERMS]:
-        return JsonResponse({"ok": False}, status=400)
-    perms = set(u.perms or [])
-    perms.add(code) if request.POST.get("on") == "1" else perms.discard(code)
-    u.perms = sorted(perms)
+    """Asosiy o'qituvchi istalgan yordamchi yoki talabaga bo'lim × amal ruxsatlarini beradi (rolga mos)."""
+    u = get_object_or_404(UserModel.objects.on_site().exclude(role=UserModel.MAIN), pk=pk)
+    if request.POST.get("reset") == "1":
+        u.reset_grants()
+        msg = "Ruxsatlar rol standartiga qaytarildi"
+        log_event("user_perm", request.user, user=u, note="standart")
+    else:
+        u.set_grants(PM.from_post(u.role, request.POST))
+        msg = "Ruxsatlar saqlandi"
+        log_event("user_perm", request.user, user=u, note=", ".join(f"{k}:{'/'.join(v)}" for k, v in u.grants.items())[:300])
     u.save(update_fields=["perms"])
-    return JsonResponse({"ok": True})
+    notify([u], "Sizning ruxsatlaringiz yangilandi", "/dashboard/")
+    messages.success(request, msg)
+    return redirect(reverse("user_detail", args=[pk]) + "?tab=perm")

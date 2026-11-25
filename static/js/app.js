@@ -324,3 +324,19 @@ function init() {
 }
 document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", init) : init();
 })();
+
+/* ---------- ruxsatlar matritsasi: tezkor tugmalar va «Ko'rish»ni avtomatik belgilash ---------- */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-pq]"); if (!b) return;
+  const row = b.closest("[data-prow]"); if (!row) return;
+  const m = b.dataset.pq;
+  row.querySelectorAll("input[type=checkbox]").forEach(i => { i.checked = m === "all" || (m === "view" && i.hasAttribute("data-pview")) });
+  row.classList.toggle("hidden", m === "none");
+});
+document.addEventListener("change", e => {
+  const i = e.target; if (!i.matches || !i.matches("[data-prow] input[type=checkbox]")) return;
+  const row = i.closest("[data-prow]"), v = row.querySelector("[data-pview]");
+  if (i.hasAttribute("data-pwrite") && i.checked && v) v.checked = true;
+  if (i.hasAttribute("data-pview") && !i.checked) row.querySelectorAll("[data-pwrite]").forEach(x => x.checked = false);
+  row.classList.toggle("hidden", !row.querySelector("input:checked"));
+});

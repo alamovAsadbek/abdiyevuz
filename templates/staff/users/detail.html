@@ -1,38 +1,247 @@
 {% extends "base.html" %}{% load ui %}
 {% block title %}{{ u.full_name }}{% endblock %}{% block h1 %}{{ u.full_name }}{% endblock %}
-{% block actions %}{% if can_gift %}<button class="ab" data-gift-user="{{ u.pk }}">{% icon 'gift' %}<span>Kurs berish</span></button>{% endif %}
-{% if request.user|can:'notify' %}<a class="ab s" href="{% url 'message_new' %}?uid={{ u.pk }}">{% icon 'send' %}<span>Xabar</span></a>{% endif %}
-<button class="ab s" data-post="{% url 'user_block' u.pk %}" data-confirm="{% if u.is_blocked %}Blokdan chiqarilsinmi?{% else %}Foydalanuvchi bloklansinmi?{% endif %}" data-next="{{ request.get_full_path }}">{% icon 'slash' %}<span>{% if u.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}</span></button>
-<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endblock %}
+{% block actions %}{% if can_gift %}
+<button class="ab" data-gift-user="{{ u.pk }}">{% icon 'gift' %}<span>Kurs berish</span></button>{% endif %}
+{% if request.user|can:'notify.add' %}<a class="ab s" href="{% url 'message_new' %}?uid={{ u.pk }}">{% icon 'send'
+    %}<span>Xabar</span></a>{% endif %}
+{% if request.user.is_main and not u.is_main %}<a class="ab s" href="?tab=perm"
+                                                  title="Bo‘limlar bo‘yicha ruxsatlarni sozlash">{% icon 'key' %}<span>Ruxsatlar</span></a>{% endif %}
+{% if P.edit and not u.is_main %}
+<button class="ab s" data-post="{% url 'user_block' u.pk %}"
+        data-confirm="{% if u.is_blocked %}Blokdan chiqarilsinmi?{% else %}Foydalanuvchi bloklansinmi?{% endif %}"
+        data-next="{{ request.get_full_path }}">{% icon 'slash' %}<span>{% if u.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}</span>
+</button>{% endif %}
+{% if P.delete and not u.is_main %}
+<button class="ab x" data-post="{% url 'user_delete' u.pk %}" data-confirm="{{ u.full_name }} o‘chirilsinmi?">{% icon
+    'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
 {% block content %}
-<div class="c p" style="margin-bottom:14px"><div class="row" style="gap:16px"><div class="av" style="width:56px;height:56px;font-size:20px">{{ u.initials }}</div><div class="sp"><h2>{{ u.full_name }}</h2><div class="m">@{{ u.username }} · {{ u.phone|default:"telefon yo‘q" }}</div></div>{% tag u.get_role_display %}{% tag u.uid %}{% if u.is_blocked %}{% tag 'Bloklangan' 'x' %}{% endif %}{% if u.is_student %}{% tag u.points|stringformat:'s'|add:' ball' 'f' %}{% endif %}</div></div>
+<div class="c p" style="margin-bottom:14px">
+    <div class="row" style="gap:16px">
+        <div class="av" style="width:56px;height:56px;font-size:20px">{{ u.initials }}</div>
+        <div class="sp"><h2>{{ u.full_name }}</h2>
+            <div class="m">@{{ u.username }} · {{ u.phone|default:"telefon yo‘q" }}</div>
+        </div>
+        {% tag u.get_role_display %}
+        {% tag u.uid %}
+
+        {% if u.is_blocked %}
+        {% tag 'Bloklangan' 'x' %}
+        {% endif %}
+
+        {% if u.is_student %}
+        {% tag u.points|stringformat:"s"|add:" ball" 'f' %}
+        {% endif %}
+    </div>
+</div>
 {% include "partials/tabs.html" %}
 {% if tab == "kurs" %}
-<div class="c tw"><table><tr><th>Kurs</th><th>Modul</th><th>Manba</th><th>Jarayon</th><th>Sana</th><th></th></tr>{% for r in accesses %}<tr><td>{{ r.a.course.title }}</td><td>{{ r.a.module.title|default:"Barcha modullar" }}</td><td>{{ r.a.get_source_display }}</td><td>{{ r.pct }}%</td><td>{{ r.a.created|dfmt }}</td><td>{% if request.user|can:'gift' %}<button class="ib2 x" title="Olib tashlash" data-post="{% url 'revoke' %}" data-confirm="Kirish huquqi olib tashlansinmi?" data-fields='{"course": {{ r.a.course_id }}{% if r.a.module_id %}, "module": {{ r.a.module_id }}{% endif %}, "uid": {{ u.pk }}, "next": "{{ request.get_full_path }}"}'>{% icon 'x' %}</button>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="m">Kursga ega emas</td></tr>{% endfor %}</table></div>
+<div class="c tw">
+    <table>
+        <tr>
+            <th>Kurs</th>
+            <th>Modul</th>
+            <th>Manba</th>
+            <th>Jarayon</th>
+            <th>Sana</th>
+            <th></th>
+        </tr>
+        {% for r in accesses %}
+        <tr>
+            <td>{{ r.a.course.title }}</td>
+            <td>{{ r.a.module.title|default:"Barcha modullar" }}</td>
+            <td>{{ r.a.get_source_display }}</td>
+            <td>{{ r.pct }}%</td>
+            <td>{{ r.a.created|dfmt }}</td>
+            <td>{% if can_gift %}
+                <button class="ib2 x" title="Olib tashlash" data-post="{% url 'revoke' %}"
+                        data-confirm="Kirish huquqi olib tashlansinmi?"
+                        data-fields='{"course": {{ r.a.course_id }}{% if r.a.module_id %}, "module": {{ r.a.module_id }}{% endif %}, "uid": {{ u.pk }}, "next": "{{ request.get_full_path }}"}'>
+                    {% icon 'x' %}
+                </button>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="m">Kursga ega emas</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 {% elif tab == "guruh" %}
-<div class="row" style="margin-bottom:12px"><button class="bt" data-picker data-src="grp-json" data-url="{% url 'user_groups' u.pk %}" data-key="add" data-multi="1" data-title="Guruhga qo‘shish" data-btn="Qo‘shish">{% icon 'plus' %} Guruhga qo‘shish</button></div><script type="application/json" id="grp-json">{{ free_groups|safe }}</script>
-{% for g in ugroups %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'layers' %}</span><span class="sp"><b>{{ g.name }}</b><div class="m">{{ g.kind_label }}</div></span><button class="ib2 x" data-post="{% url 'user_groups' u.pk %}" data-confirm="Guruhdan chiqarilsinmi?" data-fields='{"remove": {{ g.pk }}}'>{% icon 'x' %}</button></div>{% empty %}<div class="c p m">Hech qanday guruhda emas</div>{% endfor %}
+{% if request.user|can:'groups.edit' and u.is_student %}
+<div class="row" style="margin-bottom:12px">
+    <button class="bt"
+            data-picker
+            data-src="grp-json"
+            data-url="{% url 'user_groups' u.pk %}"
+            data-key="add"
+            data-multi="1"
+            data-title="Guruhga qo‘shish"
+            data-btn="Qo‘shish">
+        {% icon 'plus' %} Guruhga qo‘shish
+    </button>
+</div>
+
+<script type="application/json" id="grp-json">{
+    {
+        free_groups
+        |
+        safe
+    }
+}</script>
+{% endif %}
+{% for g in ugroups %}
+<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'layers' %}</span><span class="sp">
+    <b>{{ g.name }}</b>
+    <div class="m">{{ g.kind_label }}</div>
+</span>
+
+    {% if request.user|can:'groups.edit' %}
+    <button
+            class="ib2 x"
+            title="Guruhdan chiqarish"
+            data-post="{% url 'user_groups' u.pk %}"
+            data-confirm="Guruhdan chiqarilsinmi?"
+            data-fields='{"remove": {{ g.pk }}}'>
+        {% icon 'x' %}
+    </button>
+    {% endif %}
+</div>{% empty %}
+<div class="c p m">Hech qanday guruhda emas</div>{% endfor %}
 {% elif tab == "test" %}
-<div class="c tw"><table><tr><th>Test</th><th>Natija</th><th>Sana</th></tr>{% for a in attempts %}<tr class="k" data-href="{% url 'attempt_detail' a.pk %}"><td>{{ a.test.title }}</td><td><span class="tag">{{ a.score }} / {{ a.total }}</span></td><td>{{ a.created|dtm }}</td></tr>{% empty %}<tr><td colspan="3" class="m">Test ishlamagan</td></tr>{% endfor %}</table></div>
+<div class="c tw">
+    <table>
+        <tr>
+            <th>Test</th>
+            <th>Natija</th>
+            <th>Sana</th>
+        </tr>
+        {% for a in attempts %}
+        <tr class="k" data-href="{% url 'attempt_detail' a.pk %}">
+            <td>{{ a.test.title }}</td>
+            <td><span class="tag">{{ a.score }} / {{ a.total }}</span></td>
+            <td>{{ a.created|dtm }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" class="m">Test ishlamagan</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 {% elif tab == "vazifa" %}
-<div class="c tw"><table><tr><th>Vazifa</th><th>Dars</th><th>Holat</th><th>Ball</th><th>Sana</th></tr>{% for s in subs %}<tr class="k" data-href="{% url 'submission_review' s.pk %}"><td>{{ s.task.title }}</td><td>{{ s.task.lesson.title }}</td><td>{{ s.get_status_display }}</td><td>{{ s.score|default:"—" }}</td><td>{{ s.submitted_at|dtm }}</td></tr>{% empty %}<tr><td colspan="5" class="m">Vazifa topshirmagan</td></tr>{% endfor %}</table></div>
+<div class="c tw">
+    <table>
+        <tr>
+            <th>Vazifa</th>
+            <th>Dars</th>
+            <th>Holat</th>
+            <th>Ball</th>
+            <th>Sana</th>
+        </tr>
+        {% for s in subs %}
+        <tr class="k" data-href="{% url 'submission_review' s.pk %}">
+            <td>{{ s.task.title }}</td>
+            <td>{{ s.task.lesson.title }}</td>
+            <td>{{ s.get_status_display }}</td>
+            <td>{{ s.score|default:"—" }}</td>
+            <td>{{ s.submitted_at|dtm }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="m">Vazifa topshirmagan</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 {% elif tab == "info" %}
-<div class="c p"><form method="post" action="{% url 'user_edit' u.pk %}">{% csrf_token %}<div class="fgrid">
-{% include "partials/f.html" with label="Ism familiya" name="full_name" v=u.full_name ph="Ism familiya" wide=1 req=1 %}
-{% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=u.username ph="Foydalanuvchi nomi" req=1 %}
-{% include "partials/f.html" with label="Telefon" name="phone" v=u.phone ph="+998 90 123 45 67" phone=1 %}
-<div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options value=u.role %}</div>
-{% include "partials/f.html" with label="Yangi parol (ixtiyoriy)" name="password" ph="O‘zgartirmaslik uchun bo‘sh qoldiring" ac="new-password" %}</div>
-<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>
+<div class="c p">{% if not P.edit or u.is_main %}
+    <div class="warn" style="margin:0 0 12px">{% icon 'info' %}<span>Sizda bu foydalanuvchini tahrirlash ruxsati yo‘q — ma’lumotlar faqat ko‘rish uchun.</span>
+    </div>
+    {% endif %}
+    <form method="post" action="{% url 'user_edit' u.pk %}">{% csrf_token %}
+        <div class="fgrid">
+            {% include "partials/f.html" with label="Ism familiya" name="full_name" v=u.full_name ph="Ism familiya"
+            wide=1 req=1 %}
+            {% include "partials/f.html" with label="Foydalanuvchi nomi" name="username" v=u.username ph="Foydalanuvchi
+            nomi" req=1 %}
+            {% include "partials/f.html" with label="Telefon" name="phone" v=u.phone ph="+998 90 123 45 67" phone=1 %}
+            <div class="f"><span>Rol</span>{% include "partials/select.html" with name="role" options=role_options
+                value=u.role %}
+            </div>
+            {% include "partials/f.html" with label="Yangi parol (ixtiyoriy)" name="password" ph="O‘zgartirmaslik uchun
+            bo‘sh qoldiring" ac="new-password" hint="Parol o‘zgarsa, foydalanuvchi barcha qurilmalardan chiqariladi" %}
+        </div>
+        {% if P.edit and not u.is_main %}
+        <button class="bt mt">{% icon 'save' %} Saqlash</button>
+        {% endif %}
+    </form>
+</div>
 {% elif tab == "xabar" %}
-{% for d in deliveries %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'send' %}</span><span class="sp"><b>{{ d.message.title }}</b><div class="m">{{ d.message.created|dtm }} · {{ d.channel }}</div></span>{% if d.ok %}{% tag 'Yetkazildi' 'f' %}{% else %}{% tag d.reason 'x' %}{% endif %}</div>{% empty %}<div class="c p m">Xabarnoma yo‘q</div>{% endfor %}
+{% for d in deliveries %}
+<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'send' %}</span><span class="sp"><b>{{ d.message.title }}</b><div
+        class="m">{{ d.message.created|dtm }} · {{ d.channel }}</div></span>{% if d.ok %}{% tag 'Yetkazildi' 'f' %}{%
+    else %}{% tag d.reason 'x' %}{% endif %}
+</div>{% empty %}
+<div class="c p m">Xabarnoma yo‘q</div>{% endfor %}
 {% elif tab == "faol" %}
-<div class="gr g4 a">{% include "partials/stat.html" with i="log-in" l="Muvaffaqiyatli kirishlar" n=ok_count c="p1" %}</div>
-<div class="c tw mt"><table><tr><th>Sana</th><th>Natija</th><th>IP</th><th>Qurilma</th><th>Til / vaqt zonasi</th></tr>{% for l in logs %}<tr><td>{{ l.at|dtm }}</td><td>{% if l.ok %}{% tag 'Kirdi' 'f' %}{% else %}{% tag l.reason 'x' %}{% endif %}</td><td>{{ l.ip|default:"—" }}</td><td>{{ l.device }}</td><td>{{ l.language }} {{ l.tz }}</td></tr>{% empty %}<tr><td colspan="5" class="m">Hali kirmagan</td></tr>{% endfor %}</table></div>
+<div class="gr g4 a">{% include "partials/stat.html" with i="log-in" l="Muvaffaqiyatli kirishlar" n=ok_count c="p1" %}
+</div>
+<div class="c tw mt">
+    <table>
+        <tr>
+            <th>Sana</th>
+            <th>Natija</th>
+            <th>IP</th>
+            <th>Qurilma</th>
+            <th>Til / vaqt zonasi</th>
+        </tr>
+        {% for l in logs %}
+        <tr>
+            <td>{{ l.at|dtm }}</td>
+            <td>{% if l.ok %}{% tag 'Kirdi' 'f' %}{% else %}{% tag l.reason 'x' %}{% endif %}</td>
+            <td>{{ l.ip|default:"—" }}</td>
+            <td>{{ l.device }}</td>
+            <td>{{ l.language }} {{ l.tz }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="m">Hali kirmagan</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
 {% elif tab == "tarix" %}
-{% for e in events %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'clock' %}</span><span class="sp"><b>{{ e.label.0 }}{% if e.course %} — {{ e.course.title }}{% endif %}{% if e.group %} — {{ e.group.name }}{% endif %}</b><div class="m">{{ e.created|dtm }}{% if e.mods %} · {{ e.mods }}{% endif %}{% if e.actor %} · {{ e.actor.full_name }}{% endif %}</div></span></div>{% empty %}<div class="c p m">Tarix bo‘sh</div>{% endfor %}
+{% for e in events %}
+<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'clock' %}</span><span class="sp"><b>{{ e.label.0 }}{% if e.course %} — {{ e.course.title }}{% endif %}{% if e.group %} — {{ e.group.name }}{% endif %}</b><div
+        class="m">{{ e.created|dtm }}{% if e.mods %} · {{ e.mods }}{% endif %}{% if e.actor %} · {{ e.actor.full_name }}{% endif %}</div></span>
+</div>{% empty %}
+<div class="c p m">Tarix bo‘sh</div>{% endfor %}
 {% elif tab == "perm" %}
-<div class="c p"><h3 style="margin-bottom:6px">Yordamchi ruxsatlari</h3><p class="m">Ruxsatlar faqat serverda tekshiriladi.</p>
-{% for code, label, ic in perm_list %}<label class="op"><input type="checkbox" data-perm-toggle="{% url 'user_perm' u.pk %}" data-code="{{ code }}" {% if code in u.perms %}checked{% endif %}><span>{% icon ic %} <b>{{ label }}</b></span></label>{% endfor %}</div>
+<div class="c p">
+    <div class="row" style="margin-bottom:6px"><h3 class="sp">{% icon 'key' %} {% if pm_student %}Talaba ruxsatlari{%
+        else %}Yordamchi o‘qituvchi ruxsatlari{% endif %}</h3>{% if pm_custom %}{% tag 'Shaxsiy ruxsatlar' 'f' %}{% else
+        %}{% tag 'Rol standarti' %}{% endif %}
+    </div>
+    <p class="m" style="margin-bottom:12px">{% if pm_student %}Talabaga faqat <b>«Ko‘rish»</b> ruxsati beriladi:
+        belgilanmagan bo‘lim uning menyusida ko‘rinmaydi va unga kira olmaydi.{% else %}Har bir bo‘lim uchun <b>Ko‘rish
+            / Qo‘shish / Tahrirlash / O‘chirish</b> amallarini alohida bering. Yozish amali berilsa, «Ko‘rish» avtomatik
+        qo‘shiladi. Yordamchi faqat o‘z guruhlaridagi talabalar bilan ishlaydi.{% endif %} Ruxsatlar serverda
+        tekshiriladi.</p>
+    <form method="post" action="{% url 'user_perm' u.pk %}">{% csrf_token %}
+        {% include "partials/perm_matrix.html" with rows=pm_rows %}
+        <div class="row mt">
+            <button class="bt">{% icon 'save' %} Ruxsatlarni saqlash</button>
+            {% if pm_custom %}
+            <button type="button" class="bt s" data-post="{% url 'user_perm' u.pk %}" data-fields='{"reset": "1"}'
+                    data-confirm="Shaxsiy ruxsatlar o‘chirilib, rol standartiga qaytarilsinmi?"
+                    title="Sozlamalar → «Rollar bo‘yicha standart ruxsatlar» qo‘llanadi">{% icon 'rotate-ccw' %} Rol
+                standartiga qaytarish
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
 {% endif %}
 {% endblock %}

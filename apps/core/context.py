@@ -21,25 +21,25 @@ def active_key(name):
 
 
 def build_nav(u):
-    R = reverse
     if not u.is_authenticated:
         return [("home", "file-text", "Maqolalar", "Maqola"), ("tests", "check-square", "Testlar", "Testlar"),
                 ("courses", "play-circle", "Kurslar", "Kurslar"), ("login", "log-in", "Kirish", "Kirish")]
-    g = ("guides", "book-open", "Qo‘llanma", "Qo‘llanma")
+    V = u.can_view
+    items = [("dashboard", "grid", "Panel", "Panel")]
     if u.is_student:
-        return [("dashboard", "grid", "Panel", "Panel"), ("home", "file-text", "Maqolalar", "Maqola"), ("courses", "play-circle", "Kurslar", "Kurslar"),
-                ("tests", "check-square", "Testlar", "Testlar"), ("meetings", "video", "Uchrashuvlar", "Meeting"), ("groups", "layers", "Guruhlarim", "Guruhlar"),
-                ("tasks", "clipboard", "Vazifalarim", "Vazifalar"), ("stats", "bar-chart-2", "Statistika", "Statistika"), g,
-                ("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
-    items = [("dashboard", "grid", "Panel", "Panel"), ("home", "file-text", "Maqolalar", "Maqola")]
-    if u.can("tasks"): items.append(("tasks", "clipboard", "Vazifalar", "Vazifalar"))
-    if u.can("users"): items.append(("users", "users", "Foydalanuvchilar", "Userlar"))
-    items += [("groups", "layers", "Guruhlar", "Guruhlar"), ("tests", "check-square", "Testlar", "Testlar")]
-    if u.can("tests"): items.append(("reports", "flag", "Xato xabarlari", "Xabarlar"))
-    if u.can("notify"): items.append(("messages", "send", "Xabarnomalar", "Xabarnoma"))
-    items.append(("meetings", "video", "Uchrashuvlar", "Meeting"))
-    items += [("courses", "play-circle", "Kurslar", "Kurslar"), g, ("stats", "bar-chart-2", "Statistika", "Statistika"),
-              ("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
+        cand = [("articles", ("home", "file-text", "Maqolalar", "Maqola")), ("courses", ("courses", "play-circle", "Kurslar", "Kurslar")),
+                ("tests", ("tests", "check-square", "Testlar", "Testlar")), ("meetings", ("meetings", "video", "Uchrashuvlar", "Meeting")),
+                ("groups", ("groups", "layers", "Guruhlarim", "Guruhlar")), ("tasks", ("tasks", "clipboard", "Vazifalarim", "Vazifalar")),
+                ("stats", ("stats", "bar-chart-2", "Statistikam", "Statistika")), ("guides", ("guides", "book-open", "Qo‘llanma", "Qo‘llanma"))]
+    else:
+        cand = [("articles", ("home", "file-text", "Maqolalar", "Maqola")), ("tasks", ("tasks", "clipboard", "Vazifalar", "Vazifalar")),
+                ("users", ("users", "users", "Foydalanuvchilar", "Userlar")), ("groups", ("groups", "layers", "Guruhlar", "Guruhlar")),
+                ("tests", ("tests", "check-square", "Testlar", "Testlar")), ("reports", ("reports", "flag", "Xato xabarlari", "Xabarlar")),
+                ("notify", ("messages", "send", "Xabarnomalar", "Xabarnoma")), ("meetings", ("meetings", "video", "Uchrashuvlar", "Meeting")),
+                ("courses", ("courses", "play-circle", "Kurslar", "Kurslar")), ("guides", ("guides", "book-open", "Qo‘llanma", "Qo‘llanma")),
+                ("stats", ("stats", "bar-chart-2", "Statistika", "Statistika"))]
+    items += [it for code, it in cand if V(code)]
+    items += [("settings", "settings", "Sozlamalar", "Sozlama"), ("profile", "user", "Profil", "Profil")]
     return items
 
 

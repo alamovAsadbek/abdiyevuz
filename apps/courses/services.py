@@ -9,7 +9,8 @@ def my_groups(user):
 
 
 def scoped_students(user):
-    qs = UserModel.objects.filter(role=UserModel.STUDENT)
+    """Foydalanuvchi boshqara oladigan talabalar («Saytda ko'rinsin» o'chirilganlar kirmaydi)."""
+    qs = UserModel.objects.on_site().filter(role=UserModel.STUDENT)
     if user.is_assistant:
         qs = qs.filter(member_groups__assistants=user).distinct()
     return qs
@@ -96,13 +97,13 @@ def enrolled(lesson, viewer):
     """Shu darsni ko'rishga haqli (yoki ko'rgan/topshirgan) talabalar."""
     course = lesson.module.course
     if course.group_id:
-        qs = course.group.members.filter(role=UserModel.STUDENT)
+        qs = course.group.members.filter(role=UserModel.STUDENT, show_on_site=True)
     else:
         ids = set(CourseAccessModel.objects.filter(course=course).filter(Q(module__isnull=True) | Q(module=lesson.module))
                   .values_list("user_id", flat=True))
         ids |= set(LessonProgressModel.objects.filter(lesson=lesson).values_list("user_id", flat=True))
         ids |= set(SubmissionModel.objects.filter(task__lesson=lesson).values_list("student_id", flat=True))
-        qs = UserModel.objects.filter(role=UserModel.STUDENT, id__in=ids)
+        qs = UserModel.objects.on_site().filter(role=UserModel.STUDENT, id__in=ids)
     if viewer is not None and viewer.is_assistant:
         qs = qs.filter(member_groups__assistants=viewer).distinct()
     return qs

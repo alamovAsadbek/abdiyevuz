@@ -34,19 +34,21 @@ def groups(request):
     u = request.user
     qs = GroupModel.objects.all() if u.is_main else u.assist_groups.all() if u.is_assistant else u.member_groups.filter(is_active=True)
     can = u.is_teacher and u.can("groups")
+    P = u.acts("groups") if u.is_teacher else {}
     rows = []
-    for g in qs.annotate(mc=Count("members", distinct=True)):
+    for g in qs.annotate(mc=Count("members", filter=Q(members__show_on_site=True), distinct=True)):
         st = T("Aktiv", "f") if g.is_active else T("Noaktiv", "x")
         acts = []
-        if can:
-            acts = [A("edit-2", "Tahrirlash", url=reverse("group_detail", args=[g.pk]) + "?tab=set"),
-                    A("pause" if g.is_active else "play", "Aktiv/Noaktiv", post=reverse("group_toggle", args=[g.pk]), confirm="Guruh holati o‘zgartirilsinmi?"),
-                    A("trash-2", "O‘chirish", post=reverse("group_delete", args=[g.pk]), confirm=f"“{g.name}” guruhi o‘chirilsinmi?", cls="x")]
+        if P.get("edit"):
+            acts += [A("edit-2", "Tahrirlash", url=reverse("group_detail", args=[g.pk]) + "?tab=set"),
+                     A("pause" if g.is_active else "play", "Aktiv/Noaktiv", post=reverse("group_toggle", args=[g.pk]), confirm="Guruh holati o‘zgartirilsinmi?")]
+        if P.get("delete"):
+            acts.append(A("trash-2", "O‘chirish", post=reverse("group_delete", args=[g.pk]), confirm=f"“{g.name}” guruhi o‘chirilsinmi?", cls="x"))
         nv = g.course.modules.first().lessons.count() if hasattr(g, "course") and g.course.modules.exists() else 0
         rows.append({"title": g.name, "sub": g.kind_label, "url": reverse("group_detail", args=[g.pk]), "tags": [T(g.kind_label), st],
                      "cells": [g.name, T(g.kind_label, "" if g.kind == "online" else "f"), f"{g.mc} ta", f"{nv} ta", st], "actions": acts,
                      "f": {"ty": g.kind_label, "st": "Aktiv" if g.is_active else "Noaktiv"}})
-    add = [{"icon": "plus", "label": "Yangi guruh", "url": reverse("group_new")}] if can else None
+    add = [{"icon": "plus", "label": "Yangi guruh", "url": reverse("group_new")}] if P.get("add") else None
     return render(request, "shared/groups/list.html", {"L": make_list(request, rows, ["Guruh nomi", "Turi", "Talabalar", "Videolar", "Status"],
                                                                     [("ty", "Turi", ["Onlayn", "Oflayn"]), ("st", "Status", ["Aktiv", "Noaktiv"])], add)})
 
@@ -75,6 +77,7 @@ def group_detail(request, pk):
     module = course.first_module()
     lessons = list(module.lessons.prefetch_related("tasks"))
     ctx = {"g": g, "course": course, "module": module, "can": u.is_teacher and u.can("groups"),
+           "perm": u.acts("groups") if u.is_teacher else {},
            "kinds": [("online", "Onlayn"), ("offline", "Oflayn")]}
     if u.is_student:
         seen = set(LessonProgressModel.objects.filter(user=u, lesson__in=lessons).values_list("lesson_id", flat=True))
@@ -86,7 +89,7 @@ def group_detail(request, pk):
     names = {"vid": "Videodarslar", "mem": "Talabalar", "set": "Sozlamalar", "tch": "O‘qituvchilar", "stat": "Statistika"}
     tab = request.GET.get("tab") if request.GET.get("tab") in keys else "vid"
     ctx.update(tabs=[(k, names[k]) for k in keys], tab=tab)
-    members = g.members.all()
+    members = g.members.filter(show_on_site=True)
     if tab == "vid":
         ctx["lessons"] = [{"l": l, "seen": LessonProgressModel.objects.filter(lesson=l, user__in=members).count()} for l in lessons]
     elif tab == "mem":
@@ -96,9 +99,9 @@ def group_detail(request, pk):
                                    "tg": ", ".join(x.name for x in s.member_groups.exclude(pk=g.pk))}
                                   for s in scoped_students(u)], ensure_ascii=False)
     elif tab == "tch":
-        ctx["assistants"] = g.assistants.all()
+        ctx["assistants"] = g.assistants.filter(show_on_site=True)
         ctx["all_ass"] = json.dumps([{"id": a.pk, "t": a.full_name, "s": a.uid, "off": g.assistants.filter(pk=a.pk).exists()}
-                                     for a in UserModel.objects.filter(role="assistant")], ensure_ascii=False)
+                                     for a in UserModel.objects.on_site().filter(role="assistant")], ensure_ascii=False)
     elif tab == "stat":
         ms = list(members)
         rows = []
@@ -203,7 +206,7 @@ def group_assistants(request, pk):
     g = get_object_or_404(GroupModel, pk=pk)
     d = jload(request.body, {})
     for i in d.get("add", []):
-        a = UserModel.objects.filter(pk=to_int(i), role="assistant").first()
+        a = UserModel.objects.on_site().filter(pk=to_int(i), role="assistant").first()
         if a:
             g.assistants.add(a)
     if d.get("remove"):
@@ -264,10 +267,12 @@ def _dash_student(request):
     for g in u.member_groups.filter(is_active=True):
         for l in LessonModel.objects.filter(module__course__group=g).order_by("-created")[:4]:
             gl.append({"l": l, "g": g, "lock": lock_reason(u, l), "seen": LessonProgressModel.objects.filter(user=u, lesson=l).exists()})
-    ctx["group_lessons"] = gl[:4]
+    ctx["group_lessons"] = gl[:4] if u.can_view("groups") else []
     from apps.courses.views import student_open_tasks
-    ctx["tasks"] = student_open_tasks(u)[:6]
-    ctx.update(_meet_ctx(u))
+    ctx["see_tasks"] = u.can_view("tasks")
+    ctx["tasks"] = student_open_tasks(u)[:6] if ctx["see_tasks"] else []
+    if u.can_view("meetings"):
+        ctx.update(_meet_ctx(u))
     return render(request, "student/dashboard.html", ctx)
 
 
@@ -291,7 +296,7 @@ def _dash_staff(request):
                                   ("Yangi", st.filter(is_blocked=False, last_seen__isnull=True).count(), "#ff9db5"),
                                   ("Bloklangan", st.filter(is_blocked=True).count(), "#f4d44d")]),
            "ph": charts.phbar(round(avg)), "avg": round(avg), "tiles": charts.tiles(_test_tiles(atts.select_related("test")[:200])), "top": top,
-           "groups": [(g, g.members.count()) for g in my_groups(u)[:4]],
+           "groups": [(g, g.members.filter(show_on_site=True).count()) for g in my_groups(u)[:4]],
            "events": EventModel.objects.filter(Q(user_id__in=sids) | Q(actor=u)).select_related("user", "course")[:5],
            "last_attempts": atts.select_related("user", "test")[:5]}
     ctx.update(_meet_ctx(u))
@@ -302,72 +307,143 @@ def _dash_staff(request):
 PERIOD = {"Bugun": 1, "7 kun": 7, "30 kun": 30}
 
 
+def _bars(vals):
+    mx = max(vals) if vals and max(vals) else 1
+    return [{"v": v, "h": max(4, round(v / mx * 100)) if v else 4} for v in vals]
+
+
+def _stat_scope(u):
+    """Statistika qamrovi: talaba — faqat o'zi; yordamchi — o'z guruhlaridagi talabalar; asosiy — saytdagi hamma."""
+    if u.is_student:
+        return UserModel.objects.filter(pk=u.pk)
+    if u.is_assistant:
+        return scoped_students(u)
+    return UserModel.objects.on_site()
+
+
 @login_required
 def stats(request):
     from apps.courses.models import CourseModel
     u = request.user
     g = request.GET
-    tab = to_int(g.get("tab"), 0) if to_int(g.get("tab"), 0) in (0, 1, 2, 3) else 0
+    tab_keys = ["sum", "tst", "tsk"] if u.is_student else ["sum", "usr", "tst", "tsk"]
+    tab_names = ({"sum": "Umumiy", "tst": "Test natijalarim", "tsk": "Vazifalarim"} if u.is_student else
+                 {"sum": "Umumiy", "usr": "Foydalanuvchilar" if u.is_main else "Talabalarim", "tst": "Test natijalari", "tsk": "Vazifalar"})
+    tab = g.get("tab") if g.get("tab") in tab_keys else "sum"
     per = g.get("f_per", "")
     since = timezone.now() - timedelta(days=PERIOD[per]) if per in PERIOD else None
-    users = [u] if u.is_student else (list(scoped_students(u)) + [u] if u.is_assistant else list(UserModel.objects.all()))
-    if g.get("f_role"):
-        users = [x for x in users if x.get_role_display() == g["f_role"]]
-    if g.get("f_grp"):
-        users = [x for x in users if x.member_groups.filter(name=g["f_grp"]).exists()]
+
+    scope = _stat_scope(u)
+    if u.is_teacher:
+        if g.get("f_role"):
+            scope = scope.filter(role={"Talaba": "student", "Yordamchi o‘qituvchi": "assistant", "Asosiy o‘qituvchi": "main"}.get(g["f_role"], "-"))
+        if g.get("f_grp"):
+            scope = scope.filter(member_groups__name=g["f_grp"], member_groups__in=my_groups(u))
     if g.get("f_crs"):
-        users = [x for x in users if CourseAccessModel.objects.filter(user=x, course__title=g["f_crs"]).exists()]
+        scope = scope.filter(accesses__course__title=g["f_crs"]) if u.is_teacher else scope
+    scope = scope.distinct()
+    users = list(scope.prefetch_related("member_groups"))
     ids = [x.pk for x in users]
-    atts = AttemptModel.objects.filter(user_id__in=ids).select_related("test", "user")
-    subs = SubmissionModel.objects.filter(student_id__in=ids).select_related("task__lesson", "student")
+    stu_ids = [x.pk for x in users if x.is_student]
+    atts = AttemptModel.objects.filter(user_id__in=stu_ids).select_related("test", "user")
+    subs = SubmissionModel.objects.filter(student_id__in=stu_ids).select_related("task__lesson", "student")
+    if u.is_student and g.get("f_crs"):
+        subs = subs.filter(task__lesson__module__course__title=g["f_crs"])
     if since:
         atts, subs = atts.filter(created__gte=since), subs.filter(submitted_at__gte=since)
-    stu = [x for x in users if x.is_student]
-    avg = round(sum(a.percent for a in atts) / len(atts)) if atts else 0
-    filters = ([("role", "Rol", ["Talaba", "Yordamchi o‘qituvchi", "Asosiy o‘qituvchi"]), ("grp", "Guruh", [x.name for x in my_groups(u)])] if u.is_teacher else [])
-    filters += [("crs", "Kurs", [c.title for c in CourseModel.objects.filter(group__isnull=True)]), ("per", "Davr", ["Bugun", "7 kun", "30 kun"])]
-    ctx = {"tab": tab, "tabs": ["Umumiy", "Foydalanuvchilar", "Test natijalari", "Vazifalar"], "filters_raw": filters}
-    if tab == 0:
-        per_status = {k: subs.filter(status=k).count() for k in ("accepted", "pending", "returned")}
-        ctx.update(n_users=len(users), points=sum(x.points for x in stu), n_att=atts.count(), avg=avg, n_sub=subs.count(),
-                   n_pending=per_status["pending"], n_returned=per_status["returned"],
-                   views=sum(LessonProgressModel.objects.filter(user_id__in=[x.pk for x in stu]).values_list("views", flat=True)),
-                   donut=charts.donut([("Qabul qilindi", per_status["accepted"], "#2fb67c"), ("Tekshirilmoqda", per_status["pending"], "#6b5bd2"),
-                                       ("Qayta topshiring", per_status["returned"], "#f4d44d")]),
-                   line=charts.line([a.percent for a in atts.order_by("created")[:10]], [70] * min(10, atts.count())),
-                   tiles=charts.tiles(_test_tiles(atts[:300])), top=sorted(stu, key=lambda x: -x.points)[:5])
+
+    if u.is_student:
+        filters = [("crs", "Kurs", [c.title for c in CourseModel.objects.filter(group__isnull=True, accesses__user=u).distinct()]),
+                   ("per", "Davr", ["Bugun", "7 kun", "30 kun"])]
+    else:
+        filters = ([("role", "Rol", ["Talaba", "Yordamchi o‘qituvchi", "Asosiy o‘qituvchi"])] if u.is_main else [])
+        filters += [("grp", "Guruh", [x.name for x in my_groups(u)]),
+                    ("crs", "Kurs", [c.title for c in CourseModel.objects.filter(group__isnull=True)]), ("per", "Davr", ["Bugun", "7 kun", "30 kun"])]
+    ctx = {"tab": tab, "tabs": [(k, tab_names[k]) for k in tab_keys], "student": u.is_student, "main": u.is_main, "filters_raw": filters}
+
+    per_status = {k: subs.filter(status=k).count() for k in ("accepted", "pending", "returned")}
+    pcts = [a.percent for a in atts]
+    avg = round(sum(pcts) / len(pcts)) if pcts else 0
+    donut = charts.donut([("Qabul qilindi", per_status["accepted"], "#2fb67c"), ("Tekshirilmoqda", per_status["pending"], "#6b5bd2"),
+                          ("Qayta topshiring", per_status["returned"], "#f4d44d")])
+
+    if tab == "sum" and u.is_student:
+        prog = LessonProgressModel.objects.filter(user=u)
+        if since:
+            prog = prog.filter(last_seen__gte=since)
+        own = list(atts.order_by("created"))
+        ctx.update(points=u.points, n_att=len(own), avg=avg, best=max(pcts) if pcts else 0, n_sub=subs.count(),
+                   n_ok=per_status["accepted"], n_pending=per_status["pending"], n_returned=per_status["returned"],
+                   n_views=prog.count(), donut=donut, ph=charts.phbar(avg),
+                   line=charts.line([a.percent for a in own[-12:]], [70] * min(12, len(own))),
+                   week_bars=_bars(_day_counts(LessonProgressModel.objects.filter(user=u), "last_seen", 7)),
+                   tiles=charts.tiles(_test_tiles(own[-300:])))
         return render(request, "shared/stats.html", ctx)
-    if tab == 1:
+
+    if tab == "sum":
+        stu = [x for x in users if x.is_student]
+        today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        ctx.update(n_students=len(stu), points=sum(x.points for x in stu), n_att=atts.count(), avg=avg, n_sub=subs.count(),
+                   n_pending=per_status["pending"], n_returned=per_status["returned"],
+                   active_today=sum(1 for x in stu if x.last_seen and x.last_seen >= today),
+                   n_groups=my_groups(u).count(), donut=donut,
+                   line=charts.line(_day_counts(atts, "created", 14), _day_counts(subs, "submitted_at", 14)),
+                   tiles=charts.tiles(_test_tiles(atts[:300])), top=sorted(stu, key=lambda x: -x.points)[:5])
+        if u.is_main:
+            from apps.courses.models import LessonModel as LM
+            allu = UserModel.objects.on_site()
+            ctx.update(n_users=allu.count(), n_assist=allu.filter(role="assistant").count(), n_online=sum(1 for x in users if x.online),
+                       n_courses=CourseModel.objects.filter(group__isnull=True).count(), n_lessons=LM.objects.count(), n_tests=TestModel.objects.count(),
+                       n_blocked=allu.filter(is_blocked=True).count(),
+                       views=sum(LessonProgressModel.objects.filter(user_id__in=stu_ids).values_list("views", flat=True)),
+                       nu_bars=_bars(_day_counts(allu, "date_joined", 14)),
+                       role_donut=charts.donut([("Talabalar", allu.filter(role="student").count(), "#6b5bd2"),
+                                                ("Yordamchilar", allu.filter(role="assistant").count(), "#ff9db5"),
+                                                ("Asosiy", allu.filter(role="main").count(), "#f4d44d")]))
+        return render(request, "shared/stats.html", ctx)
+
+    ap = _applied(request, filters)
+    if tab == "usr":
         rows = []
         for x in users:
             at = [a for a in atts if a.user_id == x.pk]
             sd = x.is_student
-            rows.append({"title": x.full_name, "sub": x.get_role_display(), "avatar": True, "url": reverse("user_detail", args=[x.pk]) if (u.is_teacher and u.can("users") and sd) else "",
+            rows.append({"title": x.full_name, "sub": x.get_role_display(), "avatar": True,
+                         "url": reverse("user_detail", args=[x.pk]) if (u.can_view("users") and x.pk != u.pk) else "",
                          "tags": [T(x.get_role_display())],
                          "cells": [x.full_name, x.get_role_display(), ", ".join(gg.name for gg in x.member_groups.all()) or "—", x.points if sd else "—",
-                                   f"{round(sum(a.percent for a in at)/len(at))}%" if at else "—", len(at) if sd else "—",
+                                   f"{round(sum(a.percent for a in at) / len(at))}%" if at else "—", len(at) if sd else "—",
                                    SubmissionModel.objects.filter(student=x).count() if sd else "—",
                                    SubmissionModel.objects.filter(reviewer=x).count() if not sd else "—",
-                                   x.logins.filter(ok=True).count(), x.last_seen.strftime("%d.%m %H:%M") if x.last_seen else "—"], "f": {}})
+                                   x.logins.filter(ok=True).count(), x.last_seen.strftime("%d.%m %H:%M") if x.last_seen else "—"], "f": dict(ap)})
         L = make_list(request, rows, ["Foydalanuvchi", "Rol", "Guruh", "Ball", "Test o‘rtachasi", "Test urinishlari", "Topshirgan vazifa", "Tekshirgan vazifa", "Kirishlar", "Oxirgi faollik"], filters)
-    elif tab == 2:
+    elif tab == "tst":
         rows = []
         for a in atts.order_by("-created"):
             tt = T(f"{a.percent}%", "f" if a.percent >= 70 else "x")
-            rows.append({"title": f"{a.user.full_name} {a.test.title}", "sub": a.test.title, "url": reverse("attempt_detail", args=[a.pk]), "tags": [tt],
-                         "cells": [a.user.full_name, a.test.title, a.created, f"{a.score} / {a.total}", tt, a.score * 10],
-                         "f": {"tst": a.test.title, "res": "O‘tdi (70% va yuqori)" if a.percent >= 70 else "O‘tmadi"}})
-        L = make_list(request, rows, ["Foydalanuvchi", "Test", "Sana", "To‘g‘ri javoblar", "Natija", "Ball"],
-                      filters + [("tst", "Test", [t.title for t in TestModel.objects.all()]), ("res", "Natija", ["O‘tdi (70% va yuqori)", "O‘tmadi"])])
+            cells = ([] if u.is_student else [a.user.full_name]) + [a.test.title, a.created, f"{a.score} / {a.total}", tt]
+            rows.append({"title": a.test.title if u.is_student else f"{a.user.full_name} {a.test.title}", "sub": a.test.title,
+                         "url": reverse("attempt_detail", args=[a.pk]), "tags": [tt], "cells": cells,
+                         "f": {**ap, "tst": a.test.title, "res": "O‘tdi (70% va yuqori)" if a.percent >= 70 else "O‘tmadi"}})
+        heads = ([] if u.is_student else ["Foydalanuvchi"]) + ["Test", "Sana", "To‘g‘ri javoblar", "Natija"]
+        tests_opts = sorted({a.test.title for a in atts}) if u.is_student else [t.title for t in TestModel.objects.all()]
+        L = make_list(request, rows, heads, filters + [("tst", "Test", tests_opts), ("res", "Natija", ["O‘tdi (70% va yuqori)", "O‘tmadi"])])
     else:
         rows = []
         for s in subs.order_by("-submitted_at"):
             lab = dict(SubmissionModel.STATUS)[s.status]
             tt = T(lab, "f" if s.status == "accepted" else "" if s.status == "pending" else "x")
-            rows.append({"title": f"{s.student.full_name} {s.task.title}", "sub": s.task.title, "url": reverse("lesson_detail", args=[s.task.lesson_id]) + "?tab=task", "tags": [tt],
-                         "cells": [s.student.full_name, s.task.title, s.task.lesson.title, s.task.deadline or "—", s.submitted_at,
-                                   s.graded_at or "—", f"{s.score}/{s.task.max_score}" if s.score is not None else "—", tt], "f": {"st": lab}})
-        L = make_list(request, rows, ["Foydalanuvchi", "Vazifa", "Dars", "Muddat", "Topshirgan sana", "Baholangan sana", "Ball", "Holat"],
-                      filters + [("st", "Holat", [x[1] for x in SubmissionModel.STATUS])])
+            url = (reverse("lesson_detail", args=[s.task.lesson_id]) + "?tab=task") if u.is_student else reverse("submission_review", args=[s.pk])
+            cells = ([] if u.is_student else [s.student.full_name]) + [s.task.title, s.task.lesson.title, s.task.deadline or "—", s.submitted_at,
+                                                                         s.graded_at or "—", f"{s.score}/{s.task.max_score}" if s.score is not None else "—", tt]
+            rows.append({"title": s.task.title if u.is_student else f"{s.student.full_name} {s.task.title}", "sub": s.task.title, "url": url, "tags": [tt],
+                         "cells": cells, "f": {**ap, "st": lab}})
+        heads = ([] if u.is_student else ["Foydalanuvchi"]) + ["Vazifa", "Dars", "Muddat", "Topshirgan sana", "Baholangan sana", "Ball", "Holat"]
+        L = make_list(request, rows, heads, filters + [("st", "Holat", [x[1] for x in SubmissionModel.STATUS])])
     ctx["L"] = L
     return render(request, "shared/stats.html", ctx)
+
+
+def _applied(request, filters):
+    """Rol/guruh/kurs/davr filtrlari so'rovning o'zida (queryset) qo'llangan — qatorlar shu qiymatlar bilan belgilanadi."""
+    return {k: request.GET.get("f_" + k) for k, _, _ in filters if request.GET.get("f_" + k)}

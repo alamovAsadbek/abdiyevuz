@@ -28,21 +28,23 @@ def _mg(user):
 
 def tests(request):
     u = request.user
+    P = u.acts("tests") if u.is_authenticated and u.is_teacher else {}
     rows = []
     for t in TestModel.objects.all().prefetch_related("questions"):
         lab = t.label
         st = T(*lab)
         pt = T(f"{t.price:,}".replace(",", " ") + " so‘m", "x") if t.is_paid else T("Bepul", "f")
         acts = []
-        if _mg(u):
-            acts = [A("edit-2", "Tahrirlash", url=reverse("test_edit", args=[t.pk])),
-                    A("pause" if t.is_active else "play", "Aktiv/Noaktiv", post=reverse("test_toggle", args=[t.pk]), confirm="Test holati o‘zgartirilsinmi?"),
-                    A("trash-2", "O‘chirish", post=reverse("test_delete", args=[t.pk]), confirm=f"“{t.title}” testi o‘chirilsinmi?", cls="x")]
+        if P.get("edit"):
+            acts += [A("edit-2", "Tahrirlash", url=reverse("test_edit", args=[t.pk])),
+                     A("pause" if t.is_active else "play", "Aktiv/Noaktiv", post=reverse("test_toggle", args=[t.pk]), confirm="Test holati o‘zgartirilsinmi?")]
+        if P.get("delete"):
+            acts.append(A("trash-2", "O‘chirish", post=reverse("test_delete", args=[t.pk]), confirm=f"“{t.title}” testi o‘chirilsinmi?", cls="x"))
         n = t.questions.count()
         rows.append({"title": t.title, "sub": f"{n} ta savol", "url": reverse("test_detail", args=[t.pk]), "tags": [st],
                      "cells": [t.title, f"{n} ta", t.start_at, t.end_at, st, pt], "actions": acts,
                      "f": {"st": lab[0], "pr": "Pullik" if t.is_paid else "Bepul"}})
-    add = [{"icon": "plus", "label": "Yangi test", "url": reverse("test_new")}] if _mg(u) else None
+    add = [{"icon": "plus", "label": "Yangi test", "url": reverse("test_new")}] if P.get("add") else None
     return render(request, "shared/tests/list.html", {"L": make_list(request, rows, ["Test nomi", "Savollar", "Boshlanishi", "Tugashi", "Status", "Narx"],
                   [("st", "Status", ["Aktiv", "Noaktiv", "Tugagan", "Kutilmoqda"]), ("pr", "Narx", ["Bepul", "Pullik"])], add)})
 
@@ -54,7 +56,8 @@ def test_detail(request, pk):
     if not mg and not (u.is_authenticated and u.is_teacher):
         pass
     st = t.live_status
-    ctx = {"t": t, "st": st, "label": t.label, "n": t.questions.count(), "mg": mg, "is_staff": u.is_authenticated and u.is_teacher}
+    ctx = {"t": t, "st": st, "label": t.label, "n": t.questions.count(), "mg": mg, "is_staff": u.is_authenticated and u.is_teacher,
+           "perm": u.acts("tests") if u.is_authenticated and u.is_teacher else {}}
     ctx["paid_block"] = t.is_paid and not has_paid_access(t, u)
     ctx["guest_block"] = (not u.is_authenticated) and (t.is_paid or not t.allow_guest)
     ctx["can_try"] = can_try(t, u)
@@ -68,7 +71,7 @@ def test_detail(request, pk):
         if tab == "q":
             ctx["questions"] = t.questions.all()
         elif tab == "res":
-            ats = AttemptModel.objects.filter(test=t).select_related("user")
+            ats = AttemptModel.objects.filter(test=t, user__show_on_site=True).select_related("user")
             if u.is_assistant:
                 ats = ats.filter(user__in=scoped_students(u))
             seen, rows = set(), []
@@ -79,7 +82,7 @@ def test_detail(request, pk):
                              "grant": grants_left(t, a.user) > 0 if first else False})
             ctx["rows"] = rows
         elif tab == "rep":
-            ctx["reports"] = t.reports.select_related("user")
+            ctx["reports"] = t.reports.select_related("user") if u.can_view("reports") else []
         if mg:
             ctx["students_json"] = json.dumps([{"id": s.pk, "t": s.full_name, "s": s.uid, "off": TestAccessModel.objects.filter(test=t, user=s).exists()}
                                                for s in scoped_students(u)], ensure_ascii=False) if t.is_paid else "[]"

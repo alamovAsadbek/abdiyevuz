@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load ui %}
 {% block title %}{{ a.title }}{% endblock %}{% block h1 %}Maqola{% endblock %}
-{% block actions %}{% if mg %}<a class="ab" href="{% url 'article_edit' a.pk %}">{% icon 'edit-2' %}<span>Tahrirlash</span></a><button class="ab s" data-post="{% url 'article_toggle' a.pk %}" data-confirm="Maqola holati o‘zgartirilsinmi?" data-next="{{ request.path }}">{% icon 'power' %}<span>{% if a.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</span></button><button class="ab x" data-post="{% url 'article_delete' a.pk %}" data-confirm="Maqola o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
+{% block actions %}{% if request.user|can:'articles.edit' %}<a class="ab" href="{% url 'article_edit' a.pk %}">{% icon 'edit-2' %}<span>Tahrirlash</span></a><button class="ab s" data-post="{% url 'article_toggle' a.pk %}" data-confirm="Maqola holati o‘zgartirilsinmi?" data-next="{{ request.path }}">{% icon 'power' %}<span>{% if a.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</span></button>{% endif %}{% if request.user|can:'articles.delete' %}<button class="ab x" data-post="{% url 'article_delete' a.pk %}" data-confirm="Maqola o‘chirilsinmi?">{% icon 'trash-2' %}<span>O‘chirish</span></button>{% endif %}{% endblock %}
 {% block content %}
 <article class="c" style="overflow:hidden;padding:0">
 {% if a.cover %}<img src="{% url 'article_cover' a.pk %}" alt="" style="width:100%;max-height:380px;object-fit:cover;display:block">{% endif %}

@@ -10,7 +10,7 @@ EVENTS = {
     "group_add": ("Guruhga qo‘shildi", "f"), "group_remove": ("Guruhdan chiqarildi", "x"),
     "test_grant": ("Testga qayta ishlash ruxsati", ""), "guide_create": ("Qo‘llanma yaratildi", ""),
     "guide_act": ("Qo‘llanma aktiv qilindi", "f"), "guide_deact": ("Qo‘llanma noaktiv qilindi", "x"),
-    "guide_delete": ("Qo‘llanma o‘chirildi", "x"),
+    "guide_delete": ("Qo‘llanma o‘chirildi", "x"), "user_perm": ("Ruxsatlar o‘zgartirildi", ""),
 }
 
 
@@ -53,6 +53,8 @@ class SiteSettingsModel(models.Model):
     """Umumiy sozlamalar (yagona yozuv)."""
     articles_public = models.BooleanField("Maqolalarni login qilmasdan ko‘rish mumkin", default=True)
     registration_open = models.BooleanField("Ro‘yxatdan o‘tish ochiq", default=True)
+    role_perms = models.JSONField("Rollar bo‘yicha standart ruxsatlar", default=dict, blank=True,
+                                  help_text="{\"assistant\": {...}, \"student\": {...}} — shaxsiy ruxsat berilmagan foydalanuvchilarga amal qiladi")
 
     class Meta:
         verbose_name = "Umumiy sozlama"

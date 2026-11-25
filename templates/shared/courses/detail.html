@@ -1,26 +1,111 @@
 {% extends "base.html" %}{% load ui %}
-{% block title %}{{ c.title }}{% endblock %}{% block h1 %}{{ c.title }}{% endblock %}
-{% block actions %}{% if mg %}{% if c.is_modular %}<a class="ab" href="{% url 'module_new' c.pk %}">{% icon 'plus' %}<span>Modul qo‘shish</span></a>{% else %}<a class="ab" href="{% url 'lesson_new' module.pk %}">{% icon 'plus' %}<span>Dars qo‘shish</span></a>{% endif %}{% if request.user|can:'gift' %}<button class="ab s" data-gift-course="{{ c.pk }}">{% icon 'gift' %}<span>Talabalarga berish</span></button>{% endif %}{% endif %}{% endblock %}
+{% block title %}{{ c.title }}{% endblock %}{% block h1 %}Kurs{% endblock %}
+{% block actions %}{% if perm.add %}{% if c.is_modular %}<a class="ab" href="{% url 'module_new' c.pk %}" title="Kursga yangi modul qo‘shish">{% icon 'plus' %}<span>Modul qo‘shish</span></a>{% else %}<a class="ab" href="{% url 'lesson_new' module.pk %}" title="Kursga yangi video dars qo‘shish">{% icon 'plus' %}<span>Dars qo‘shish</span></a>{% endif %}{% endif %}{% if request.user|can:'gift.use' %}<button class="ab s" data-gift-course="{{ c.pk }}" title="Tanlangan talabalarga kursni to‘lovsiz ochib berish">{% icon 'gift' %}<span>Talabalarga berish</span></button>{% endif %}{% if perm.edit %}<a class="ab s" href="?tab=set" title="Kurs sozlamalari">{% icon 'settings' %}<span>Sozlamalar</span></a>{% endif %}{% endblock %}
 {% block content %}
-<div class="c p" style="margin-bottom:14px"><div class="row">{% if not c.is_active %}{% tag 'Noaktiv' 'x' %}{% endif %}{% tag c.is_modular|yesno:"Modulli,Modulsiz" %}{% if c.sequential %}{% tag 'Ketma-ket' %}{% endif %}{% if not c.is_modular %}{% tag c.price|money c.price|yesno:"x,f" %}{% endif %}</div><p class="m mt">{{ c.description }}</p></div>
-{% if mg %}{% include "partials/tabs.html" %}{% endif %}
+<section class="chero">
+  <div class="chb">
+    <div class="crumb"><a href="{% url 'courses' %}">Kurslar</a>{% icon 'chevron-right' %}<span>{{ c.title }}</span></div>
+    <div class="row chtags">
+      <span class="chip2" data-tip="{% if c.is_modular %}Kurs modullarga bo‘lingan, har bir modul alohida ochiladi yoki sotib olinadi{% else %}Darslar to‘g‘ridan-to‘g‘ri kurs ichida joylashgan{% endif %}">{% icon 'layers' %}{% if c.is_modular %}Modulli kurs{% else %}Modulsiz kurs{% endif %}</span>
+      {% if c.sequential %}<span class="chip2" data-tip="Keyingi dars avvalgi dars ko‘rilgach (va vazifasi yuborilgach) ochiladi">{% icon 'list' %}Ketma-ket</span>{% else %}<span class="chip2" data-tip="Darslarni istalgan tartibda ko‘rish mumkin">{% icon 'shuffle' %}Ixtiyoriy tartib</span>{% endif %}
+      {% if c.login_required %}<span class="chip2" data-tip="Kursni ko‘rish uchun tizimga kirish shart">{% icon 'lock' %}Faqat a’zolar uchun</span>{% endif %}
+      {% if not c.is_active %}<span class="chip2 x" data-tip="Noaktiv kurs talabalarga ko‘rinmaydi — faqat o‘qituvchilar ko‘radi">{% icon 'eye-off' %}Noaktiv</span>{% endif %}
+    </div>
+    <h2>{{ c.title }}</h2>
+    {% if c.description %}<p class="chd">{{ c.description|truncatechars:260 }}</p>{% else %}<p class="chd" style="opacity:.65">Kurs tavsifi hali qo‘shilmagan{% if perm.edit %} — «Sozlamalar» bo‘limidan qo‘shing{% endif %}</p>{% endif %}
+    <div class="row chcta">
+      {% if progress and progress.last %}<a class="bt w" href="{% url 'lesson_detail' progress.last.pk %}" data-tip="Oxirgi ko‘rgan darsingizdan davom eting">{% icon 'play' %} Davom etish</a>
+      {% elif first_lesson and has_access %}<a class="bt w" href="{% url 'lesson_detail' first_lesson.pk %}">{% icon 'play' %} {% if staff %}Birinchi darsni ochish{% else %}Kursni boshlash{% endif %}</a>{% endif %}
+      {% if can_buy %}<button class="bt w" data-post="{% url 'buy_request' %}" data-fields='{"course": {{ c.pk }}, "next": "{{ request.path }}"}' data-confirm="Sotib olish so‘rovi o‘qituvchiga yuborilsinmi?" data-tip="So‘rov o‘qituvchiga boradi, u kursni siz uchun ochib beradi">{% icon 'shopping-cart' %} Sotib olish so‘rovi</button>{% endif %}
+      {% if tab != "about" %}<a class="bt chg" href="?tab=about">{% icon 'info' %} Kurs haqida batafsil</a>{% endif %}
+    </div>
+  </div>
+  <aside class="chs">
+    {% if progress %}
+      <div class="chring" data-tip="Bajarilgan darslar ulushi (dars ko‘rilgan va vazifasi yuborilgan)"><svg viewBox="0 0 44 44"><circle class="t" cx="22" cy="22" r="18"/><circle class="f" cx="22" cy="22" r="18" style="--o:{{ progress.off }}"/></svg><b>{{ progress.pct }}%</b></div>
+      <div class="chsl">Sizning jarayoningiz</div><div class="chsv">{{ progress.done }} / {{ progress.tot }} dars</div>
+    {% else %}
+      <div class="chsl">Narxi</div><div class="chpr">{{ price_label }}</div>
+      {% if has_access and request.user.is_authenticated and not staff %}<span class="chip2 ok">{% icon 'check-circle' %}Sizda ochiq</span>{% endif %}
+      {% if staff %}<div class="chsl" style="margin-top:12px">Jami ko‘rishlar</div><div class="chsv">{{ info.views }}</div>{% endif %}
+    {% endif %}
+  </aside>
+</section>
+
+<div class="cstat a">
+  {% if c.is_modular %}<div data-tip="Kursdagi modullar soni"><span class="ic">{% icon 'layers' %}</span><b>{{ info.n_mod }}</b><small>Modul</small></div>{% endif %}
+  <div data-tip="Kursdagi jami darslar ({{ info.n_video }} tasida video bor)"><span class="ic">{% icon 'play-circle' %}</span><b>{{ info.n_les }}</b><small>Dars</small></div>
+  <div data-tip="Yuklangan video fayllarning umumiy davomiyligi"><span class="ic">{% icon 'clock' %}</span><b>{% if info.dur %}{{ info.dur|dur }}{% else %}—{% endif %}</b><small>Davomiylik</small></div>
+  <div data-tip="Darslarga biriktirilgan aktiv uyga vazifalar"><span class="ic">{% icon 'clipboard' %}</span><b>{{ info.n_task }}</b><small>Vazifa</small></div>
+  <div data-tip="Darslarga biriktirilgan fayl va havolalar"><span class="ic">{% icon 'paperclip' %}</span><b>{{ info.n_mat }}</b><small>Qo‘llanma</small></div>
+  {% if staff %}<div data-tip="Kurs (yoki uning moduli) ochib berilgan talabalar"><span class="ic">{% icon 'users' %}</span><b>{{ info.n_stu }}</b><small>Talaba</small></div>{% endif %}
+</div>
+
+<div class="tabs c">{% for k, n in tabs %}<a class="{% if k == tab %}on{% endif %}" href="?tab={{ k }}" title="{{ tab_hints|getitem:k }}">{{ n }}</a>{% endfor %}</div>
+
 {% if tab == "mod" %}
-<div class="gr a">{% for r in mods %}<a class="c pc p{% cycle '1' '2' '3' '4' %} hv" href="{% url 'module_detail' r.m.pk %}" style="color:inherit;text-decoration:none"><div class="row"><span class="ic">{% icon 'layers' %}</span><span class="sp"></span>{% if not r.m.is_active %}{% tag 'Noaktiv' 'x' %}{% elif r.ok %}{% tag 'Ochiq' 'f' %}{% else %}{% tag r.m.price|money 'x' %}{% endif %}</div><h3 style="margin-top:10px">{{ r.m.title }}</h3><div class="m">{{ r.n }} ta dars</div></a>{% empty %}<div class="c p" style="text-align:center;padding:30px"><p class="m" style="margin-bottom:12px">Bu kursda hali modul yo‘q</p>{% if mg %}<a class="bt" href="{% url 'module_new' c.pk %}">{% icon 'plus' %} Birinchi modulni qo‘shish</a>{% endif %}</div>{% endfor %}</div>
+<div class="mgrid a">{% for r in mods %}
+  <a class="mcard hv {% if not r.ok %}lk{% endif %}" href="{% url 'module_detail' r.m.pk %}">
+    <div class="row"><span class="mno">{{ forloop.counter|stringformat:"02d" }}</span><span class="sp"></span>
+      {% if not r.m.is_active %}<span data-tip="Noaktiv modul talabalarga ko‘rinmaydi">{% tag 'Noaktiv' 'x' %}</span>{% elif r.ok %}<span data-tip="{% if r.own %}Bu modul sizga ochib berilgan{% elif r.m.price %}Sizda ochiq{% else %}Bepul modul{% endif %}">{% tag 'Ochiq' 'f' %}</span>{% else %}<span data-tip="Pullik modul — ochish uchun sotib olish so‘rovini yuboring">{% tag r.m.price|money 'x' %}</span>{% endif %}</div>
+    <h3>{{ r.m.title }}</h3>
+    {% if r.m.description %}<p class="m">{{ r.m.description|truncatechars:110 }}</p>{% endif %}
+    <ul class="mles">{% for l in r.lessons %}<li>{% icon 'play' %}<span>{{ l.title }}</span></li>{% empty %}<li class="m">Hali dars qo‘shilmagan</li>{% endfor %}{% if r.n > 4 %}<li class="m">+ yana {{ r.n|add:"-4" }} ta dars</li>{% endif %}</ul>
+    <div class="mfoot"><span>{% icon 'play-circle' %}{{ r.n }} dars</span>{% if r.dur %}<span>{% icon 'clock' %}{{ r.dur|dur }}</span>{% endif %}<span>{% icon 'tag' %}{{ r.m.price|money }}</span><span class="sp"></span>{% if r.ok %}<span class="mgo">{% icon 'arrow-right' %}</span>{% else %}<span class="mgo x">{% icon 'lock' %}</span>{% endif %}</div>
+    {% if request.user.is_student and r.ok %}<div class="bar0" style="margin-top:10px" data-tip="Ko‘rilgan darslar: {{ r.pct }}%"><i style="width:{{ r.pct }}%"></i></div>{% endif %}
+  </a>{% empty %}
+  <div class="c p empty"><span class="ic">{% icon 'layers' %}</span><b>Bu kursda hali modul yo‘q</b>{% if perm.add %}<a class="bt" href="{% url 'module_new' c.pk %}">{% icon 'plus' %} Birinchi modulni qo‘shish</a>{% else %}<span class="m">Tez orada qo‘shiladi</span>{% endif %}</div>
+{% endfor %}</div>
+
 {% elif tab == "les" %}
-{% if can_buy %}<div class="c p" style="margin-bottom:14px"><div class="row"><b class="sp">Bu kurs pullik — {{ c.price|money }}</b><button class="bt" data-post="{% url 'buy_request' %}" data-fields='{"course": {{ c.pk }}, "next": "{{ request.path }}"}' data-confirm="Sotib olish so‘rovi o‘qituvchiga yuborilsinmi?">{% icon 'shopping-cart' %} Sotib olish so‘rovi</button></div></div>{% endif %}
+{% if can_buy %}<div class="c p buyb"><span class="ic">{% icon 'lock' %}</span><div class="sp"><b>Bu kurs pullik — {{ c.price|money }}</b><div class="m">So‘rov yuboring — o‘qituvchi kursni siz uchun ochib beradi</div></div><button class="bt" data-post="{% url 'buy_request' %}" data-fields='{"course": {{ c.pk }}, "next": "{{ request.path }}"}' data-confirm="Sotib olish so‘rovi o‘qituvchiga yuborilsinmi?">{% icon 'shopping-cart' %} Sotib olish so‘rovi</button></div>{% endif %}
+<div class="c p lsbox"><div class="row" style="margin-bottom:6px"><h3 class="sp">{% icon 'list' %} Darslar ro‘yxati <span class="hint" data-tip="Qulf belgisi — dars hali ochilmagan. Ustiga bossangiz sababi ko‘rsatiladi">?</span></h3><span class="m">{{ rows|length }} ta dars</span></div>
 {% include "partials/lesson_list.html" %}
-{% if mg and not rows %}<div class="c p" style="text-align:center;padding:30px"><a class="bt" href="{% url 'lesson_new' module.pk %}">{% icon 'plus' %} Birinchi video darsni qo‘shish</a></div>{% endif %}
+{% if perm.add and not rows %}<div style="text-align:center;padding:20px"><a class="bt" href="{% url 'lesson_new' module.pk %}">{% icon 'plus' %} Birinchi video darsni qo‘shish</a></div>{% endif %}</div>
+
+{% elif tab == "about" %}
+<div class="gr g2 a">
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'book-open' %} Kurs tavsifi</h3><div class="ctxt">{{ c.description|default:"Tavsif qo‘shilmagan"|linebreaks }}</div>
+    <dl class="kv mt">
+      {% if teacher %}<dt>O‘qituvchi</dt><dd>{{ teacher.full_name }}</dd>{% endif %}
+      <dt>Kurs turi</dt><dd>{% if c.is_modular %}Modulli ({{ info.n_mod }} ta modul){% else %}Modulsiz{% endif %}</dd>
+      <dt>Darslar tartibi</dt><dd>{% if c.sequential %}Ketma-ket — keyingi dars avvalgisi tugagach ochiladi{% else %}Ixtiyoriy — istalgan darsni ko‘rish mumkin{% endif %}</dd>
+      <dt>Kirish</dt><dd>{% if c.login_required %}Faqat tizimga kirganlar uchun{% else %}Bepul darslarni mehmonlar ham ko‘ra oladi{% endif %}</dd>
+      <dt>Yaratilgan</dt><dd>{{ c.created|dfmt }}</dd>
+      {% if staff %}<dt>Holati</dt><dd>{% if c.is_active %}Aktiv — talabalarga ko‘rinadi{% else %}Noaktiv — talabalarga ko‘rinmaydi{% endif %}</dd>{% endif %}
+    </dl>
+  </div>
+  <div class="c p"><h3 style="margin-bottom:10px">{% icon 'check-circle' %} Kursda nimalar bor</h3>
+    <ul class="incl">
+      <li>{% icon 'play-circle' %}{{ info.n_les }} ta dars{% if info.n_video %}, shundan {{ info.n_video }} tasi video{% endif %}{% if info.dur %} ({{ info.dur|dur }}){% endif %}</li>
+      {% if c.is_modular %}<li>{% icon 'layers' %}{{ info.n_mod }} ta modul</li>{% endif %}
+      <li>{% icon 'clipboard' %}{{ info.n_task }} ta uyga vazifa</li>
+      <li>{% icon 'paperclip' %}{{ info.n_mat }} ta qo‘llanma va fayl</li>
+      <li>{% icon 'shield' %}Himoyalangan video (shifrlangan oqim)</li>
+    </ul>
+    <div class="chsl" style="margin-top:14px">Narxi <span class="hint" data-tip="{% if c.is_modular %}Modulli kursda har bir modul alohida narxlanadi — eng arzon modul narxi ko‘rsatilgan{% else %}Kursning to‘liq narxi. Bepul kurs hammaga ochiq{% endif %}">?</span></div><div class="chpr" style="color:var(--pr)">{{ price_label }}</div>
+    {% if progress %}<div class="chsl" style="margin-top:14px">Sizning jarayoningiz</div><div class="bar0" style="margin-top:6px"><i style="width:{{ progress.pct }}%"></i></div><div class="m" style="margin-top:4px">{{ progress.done }} / {{ progress.tot }} dars bajarildi ({{ progress.pct }}%)</div>{% endif %}
+  </div>
+</div>
+
 {% elif tab == "set" %}
-<div class="c p"><form method="post" action="{% url 'course_settings' c.pk %}">{% csrf_token %}<div class="fgrid">
-{% include "partials/f.html" with label="Kurs nomi" name="title" v=c.title ph="Kurs nomi" wide=1 req=1 %}
-{% include "partials/f.html" with label="Tavsif" name="description" v=c.description type="textarea" ph="Kurs haqida qisqacha" wide=1 %}
-{% if not c.is_modular %}{% include "partials/f.html" with label="Narxi (0 = bepul)" name="price" type="number" v=c.price ph="0" min0=1 %}{% endif %}
-{% include "partials/check.html" with name="sequential" on=c.sequential title="Ketma-ket ko‘rish" desc="Keyingi dars avvalgisi tugagach ochiladi" %}
-{% include "partials/check.html" with name="login_required" on=c.login_required title="Ko‘rish uchun kirish majburiy" %}</div>
-<div class="row mt"><button class="bt">{% icon 'save' %} Saqlash</button><button type="button" class="bt s" data-post="{% url 'course_toggle' c.pk %}" data-confirm="Kurs holati o‘zgartirilsinmi?">{% icon 'power' %} {% if c.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</button><button type="button" class="bt d" data-post="{% url 'course_delete' c.pk %}" data-confirm="Kurs butunlay o‘chirilsinmi?">{% icon 'trash-2' %} O‘chirish</button></div></form></div>
+<div class="gr g2 a"><div class="c p"><h3 style="margin-bottom:12px">{% icon 'settings' %} Kurs sozlamalari</h3>
+{% if perm.edit %}<form method="post" action="{% url 'course_settings' c.pk %}">{% csrf_token %}
+{% include "partials/f.html" with label="Kurs nomi" name="title" v=c.title ph="Masalan: Kimyo asoslari" req=1 hint="Kurslar ro‘yxatida va kurs sahifasida ko‘rinadi" %}
+{% include "partials/f.html" with label="Tavsif" name="description" v=c.description type="textarea" ph="Kurs kim uchun, nimalarni o‘rgatadi, qanday natija beradi" h="140px" hint="«Kurs haqida» bo‘limida to‘liq ko‘rsatiladi" %}
+{% if not c.is_modular %}{% include "partials/f.html" with label="Narxi, so‘m (0 = bepul)" name="price" type="number" v=c.price ph="0" min0=1 hint="Pullik kursni talaba sotib olish so‘rovi orqali oladi yoki siz ochib berasiz" %}{% else %}<div class="warn">{% icon 'info' %}<span>Modulli kursda narx har bir modul uchun alohida — modul sahifasida «Tahrirlash» orqali belgilanadi.</span></div>{% endif %}
+{% include "partials/check.html" with name="sequential" on=c.sequential title="Ketma-ket ko‘rish" desc="Keyingi dars avvalgisi ko‘rilgach va vazifasi yuborilgach ochiladi" %}
+{% include "partials/check.html" with name="login_required" on=c.login_required title="Ko‘rish uchun kirish majburiy" desc="Yoqilsa, bepul darslarni ham faqat tizimga kirganlar ko‘radi" %}
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form>{% else %}<p class="m">Tahrirlash ruxsatingiz yo‘q</p>{% endif %}</div>
+<div class="c p"><h3 style="margin-bottom:12px">{% icon 'alert-triangle' %} Holat va xavfli amallar</h3>
+<div class="ls" style="cursor:default"><span class="ic" style="background:var(--p2)">{% icon 'power' %}</span><span class="sp"><b>{% if c.is_active %}Kurs aktiv{% else %}Kurs noaktiv{% endif %}</b><div class="m">Noaktiv kurs talabalarga ko‘rinmaydi, lekin ma’lumotlari saqlanadi</div></span>{% if perm.edit %}<button type="button" class="bt s" data-post="{% url 'course_toggle' c.pk %}" data-confirm="Kurs holati o‘zgartirilsinmi?">{% if c.is_active %}Noaktiv qilish{% else %}Aktiv qilish{% endif %}</button>{% endif %}</div>
+{% if perm.delete %}<div class="ls" style="cursor:default"><span class="ic" style="background:var(--p3);color:var(--dg)">{% icon 'trash-2' %}</span><span class="sp"><b>Kursni o‘chirish</b><div class="m">Barcha modul, dars, vazifa va topshiriqlar butunlay o‘chadi</div></span><button type="button" class="bt d" data-post="{% url 'course_delete' c.pk %}" data-confirm="Kurs butunlay o‘chirilsinmi? Bu amalni qaytarib bo‘lmaydi.">O‘chirish</button></div>{% endif %}
+</div></div>
+
 {% elif tab == "stu" %}
-{% for r in students %}<div class="ls"><div class="av">{{ r.u.initials }}</div><span class="sp"><b>{{ r.u.full_name }}</b><div class="m">{{ r.u.uid }} · {{ r.mods|join:", " }} · {{ r.n }} dars bajargan</div></span><button class="ib2 x" title="Olib tashlash" data-post="{% url 'revoke' %}" data-confirm="{{ r.u.full_name }} dan kurs olib tashlansinmi?" data-fields='{"course": {{ c.pk }}, "uid": {{ r.u.pk }}, "next": "{{ request.get_full_path }}"}'>{% icon 'user-x' %}</button></div>{% empty %}<div class="c p m">Hali hech kim yo‘q</div>{% endfor %}
+<div class="c p">{% for r in students %}<div class="ls"><div class="av">{{ r.u.initials }}</div><span class="sp"><b>{{ r.u.full_name }}</b><div class="m">{{ r.u.uid }} · {{ r.mods|join:", " }}</div><div class="bar0" style="margin-top:6px;max-width:260px"><i style="width:{{ r.pct }}%"></i></div></span><span class="tag" data-tip="Bajarilgan darslar soni va ulushi">{{ r.n }} dars · {{ r.pct }}%</span>{% if request.user|can:'gift.use' %}<button class="ib2 x" title="Kursni olib tashlash" data-post="{% url 'revoke' %}" data-confirm="{{ r.u.full_name }} dan kurs olib tashlansinmi?" data-fields='{"course": {{ c.pk }}, "uid": {{ r.u.pk }}, "next": "{{ request.get_full_path }}"}'>{% icon 'user-x' %}</button>{% endif %}</div>{% empty %}<div class="m" style="text-align:center;padding:20px">Hali hech kimga ochilmagan</div>{% endfor %}</div>
+
 {% else %}
-{% for e in events %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'clock' %}</span><span class="sp"><b>{{ e.label.0 }}{% if e.user %} — {{ e.user.full_name }}{% endif %}</b><div class="m">{{ e.created|dtm }}{% if e.mods %} · {{ e.mods }}{% endif %}{% if e.actor %} · {{ e.actor.full_name }}{% endif %}</div></span></div>{% empty %}<div class="c p m">Tarix bo‘sh</div>{% endfor %}
+<div class="c p">{% for e in events %}<div class="ls"><span class="ic" style="background:var(--p2)">{% icon 'clock' %}</span><span class="sp"><b>{{ e.label.0 }}{% if e.user %} — {{ e.user.full_name }}{% endif %}</b><div class="m">{{ e.created|dtm }}{% if e.mods %} · {{ e.mods }}{% endif %}{% if e.actor %} · {{ e.actor.full_name }}{% endif %}</div></span></div>{% empty %}<div class="m" style="text-align:center;padding:20px">Tarix bo‘sh</div>{% endfor %}</div>
 {% endif %}
 {% endblock %}

@@ -1,0 +1,59 @@
+{% load ui %}
+
+<div class="pmx">
+    {% for r in rows %}
+        <div class="prow {% if r.level == 'hidden' %}hidden{% endif %}" data-prow>
+
+            <div class="pt">
+                <span class="ic">{% icon r.icon %}</span>
+
+                <div>
+                    <b>{{ r.label }}</b>
+                    <span class="hint" data-tip="{{ r.desc }}">?</span>
+
+                    <div style="margin-top:3px">
+                        {% tag r.level_label r.level_cls %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="pcells">
+                {% for x in r.cells %}
+                    <label class="pc2" data-tip="{{ x.hint }}">
+                        <input
+                            type="checkbox"
+                            name="{{ prefix|default:'p' }}.{{ r.code }}"
+                            value="{{ x.a }}"
+                            {% if x.on %}checked{% endif %}
+                            {% if x.a == 'view' %}
+                                data-pview
+                            {% else %}
+                                data-pwrite
+                            {% endif %}
+                        >
+                        {{ x.label }}
+                    </label>
+                {% endfor %}
+            </div>
+
+            <div class="pq">
+                {% if r.cells|length > 1 %}
+                    <button type="button" data-pq="all" title="Barcha amallarni berish">
+                        Hammasi
+                    </button>
+
+                    <button type="button" data-pq="view" title="Faqat ko‘rish">
+                        Ko‘rish
+                    </button>
+                {% endif %}
+
+                <button type="button" data-pq="none" title="Bo‘limni butunlay yopish">
+                    Yopish
+                </button>
+            </div>
+
+        </div>
+    {% empty %}
+        <div class="m">Ruxsatlar ro‘yxati mavjud emas.</div>
+    {% endfor %}
+</div>

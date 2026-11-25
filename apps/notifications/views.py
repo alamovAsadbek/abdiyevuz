@@ -112,7 +112,7 @@ def message_new(request):
             err = "Kamida bitta foydalanuvchini tanlang"
         if not err:
             groups = list(my_groups(u).filter(pk__in=gids))
-            users = list(UserModel.objects.filter(pk__in=uids))
+            users = list(UserModel.objects.on_site().filter(pk__in=uids))
             rcp = list(recipients(aud, u, groups, users).distinct())
             if not rcp:
                 err = "Qabul qiluvchi topilmadi"
@@ -130,8 +130,8 @@ def message_new(request):
     pre = request.GET.get("uid")
     return render(request, "staff/messages/form.html", {"m": None, "channel_opts": [("app", "Sayt ichida"), ("sms", "SMS"), ("both", "Ikkalasi")],
         "prio_opts": [("normal", "Oddiy"), ("important", "Muhim")], "types": [(k, MessageModel.AUD[k]) for k in types], "pre": pre,
-        "groups_json": json.dumps([{"id": g.pk, "t": g.name, "s": f"{g.kind_label} · {g.members.count()} talaba"} for g in my_groups(u)], ensure_ascii=False),
-        "users_json": json.dumps([{"id": s.pk, "t": s.full_name, "s": f"{s.uid} · {s.get_role_display()}"} for s in (scoped_students(u) if u.is_assistant else UserModel.objects.exclude(pk=u.pk))], ensure_ascii=False)})
+        "groups_json": json.dumps([{"id": g.pk, "t": g.name, "s": f"{g.kind_label} · {g.members.filter(show_on_site=True).count()} talaba"} for g in my_groups(u)], ensure_ascii=False),
+        "users_json": json.dumps([{"id": s.pk, "t": s.full_name, "s": f"{s.uid} · {s.get_role_display()}"} for s in (scoped_students(u) if u.is_assistant else UserModel.objects.on_site().exclude(pk=u.pk))], ensure_ascii=False)})
 
 
 def _msg(request, pk):
@@ -189,5 +189,5 @@ def recipients_count(request):
     if aud not in _aud_types(u):
         return JsonResponse({"n": 0})
     groups = list(my_groups(u).filter(pk__in=[to_int(x) for x in request.GET.getlist("g")]))
-    users = list(UserModel.objects.filter(pk__in=[to_int(x) for x in request.GET.getlist("u")]))
+    users = list(UserModel.objects.on_site().filter(pk__in=[to_int(x) for x in request.GET.getlist("u")]))
     return JsonResponse({"n": recipients(aud, u, groups, users).distinct().count()})

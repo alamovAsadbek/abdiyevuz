@@ -1,8 +1,8 @@
 {% extends "base.html" %}{% load ui %}
 {% block title %}Modul{% endblock %}{% block h1 %}{% if m %}Modulni tahrirlash{% else %}Yangi modul{% endif %}{% endblock %}
 {% block content %}<div class="c p"><form method="post">{% csrf_token %}<div class="fgrid">
-{% include "partials/f.html" with label="Modul nomi" name="title" v=m.title ph="Masalan: Organik kimyo" wide=1 req=1 %}
-{% include "partials/f.html" with label="Tavsif" name="description" v=m.description type="textarea" ph="Modul haqida" wide=1 %}
-{% include "partials/f.html" with label="Narxi (0 = bepul)" name="price" type="number" v=m.price|default:0 ph="0" min0=1 %}
-{% include "partials/check.html" with name="is_active" on=active title="Aktiv modul" %}</div>
+{% include "partials/f.html" with label="Modul nomi" name="title" v=m.title ph="Masalan: Organik kimyo" wide=1 req=1 hint="Kurs sahifasidagi modul kartasida ko‘rinadi" %}
+{% include "partials/f.html" with label="Tavsif" name="description" v=m.description type="textarea" ph="Modulda qaysi mavzular o‘tiladi" wide=1 hint="Modul kartasida va modul sahifasida ko‘rsatiladi" %}
+{% include "partials/f.html" with label="Narxi, so‘m (0 = bepul)" name="price" type="number" v=m.price|default:0 ph="0" min0=1 hint="Har bir modul alohida sotiladi yoki ochib beriladi" %}
+{% include "partials/check.html" with name="is_active" on=active title="Aktiv modul" desc="O‘chirilsa, modul talabalarga ko‘rinmaydi" %}</div>
 <button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endblock %}

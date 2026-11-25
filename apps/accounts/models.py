@@ -1,7 +1,7 @@
 import secrets
 
 from django.apps import apps
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.utils import timezone
 
@@ -33,6 +33,12 @@ def gen_uid():
     return "KM-%d" % (10000 + secrets.randbelow(90000))
 
 
+class SiteUserManager(UserManager):
+    def on_site(self):
+        """Saytda ko'rinadigan foydalanuvchilar («Saytda ko'rinsin» o'chirilganlar faqat Django adminda)."""
+        return self.get_queryset().filter(show_on_site=True)
+
+
 class UserModel(AbstractUser):
     MAIN, ASSISTANT, STUDENT = "main", "assistant", "student"
     ROLES = [(MAIN, "Asosiy o‘qituvchi"), (ASSISTANT, "Yordamchi o‘qituvchi"), (STUDENT, "Talaba")]
@@ -42,11 +48,17 @@ class UserModel(AbstractUser):
     phone = models.CharField("Telefon", max_length=20, blank=True)
     role = models.CharField("Rol", max_length=10, choices=ROLES, default=STUDENT, db_index=True)
     is_blocked = models.BooleanField("Bloklangan", default=False)
-    perms = models.JSONField("Yordamchi ruxsatlari", default=list, blank=True)
+    perms = models.JSONField("Ruxsatlar", default=dict, blank=True,
+                             help_text="Bo‘lim × amal ruxsatlari. Saytdagi foydalanuvchi sahifasi → «Ruxsatlar» tabida boshqariladi")
+    show_on_site = models.BooleanField(
+        "Saytda ko‘rinsin", default=True, db_index=True,
+        help_text="O‘chirilsa, foydalanuvchi saytdagi barcha ro‘yxat, statistika, guruh va tanlash oynalarida ko‘rinmaydi "
+                  "va saytdan boshqarib bo‘lmaydi — faqat Django admin orqali ko‘rish va boshqarish mumkin.")
     points = models.PositiveIntegerField("Ball", default=0)
     last_seen = models.DateTimeField("Oxirgi faollik", null=True, blank=True)
 
     REQUIRED_FIELDS = ["full_name"]
+    objects = SiteUserManager()
 
     class Meta:
         verbose_name = "Foydalanuvchi"
@@ -82,14 +94,52 @@ class UserModel(AbstractUser):
     def online(self):
         return bool(self.last_seen and (timezone.now() - self.last_seen).total_seconds() < 300)
 
-    def can(self, code):
+    # ------------------------------------------------------------ ruxsatlar (bo'lim × amal)
+    @property
+    def grants(self):
+        """{bo'lim: [amallar]} — asosiy o'qituvchida hammasi; boshqalarda shaxsiy yoki rol standarti."""
+        c = getattr(self, "_grants_cache", None)
+        if c is None:
+            from . import permissions as PM
+            c = self._grants_cache = PM.grants_of(self)
+        return c
+
+    @property
+    def has_custom_grants(self):
+        return isinstance(self.perms, dict) and bool(self.perms.get("_custom"))
+
+    def set_grants(self, data):
+        from . import permissions as PM
+        self.perms = {**PM.clean(self.role, data), "_custom": True}
+        self._grants_cache = None
+
+    def reset_grants(self):
+        """Shaxsiy ruxsatlarni o'chirib, rol standartiga qaytaradi."""
+        self.perms = {}
+        self._grants_cache = None
+
+    def can(self, code, action=None):
+        """action=None — bo'limda biror yozish amali (qo'shish/tahrirlash/o'chirish/ruxsat) bormi (faqat o'qituvchilar).
+        action='view' — bo'lim ko'rinadimi. Boshqa action — aynan shu amal bormi."""
         if self.is_main:
             return True
-        if not self.is_assistant:
+        if self.role not in (self.ASSISTANT, self.STUDENT):
             return False
-        if code in (self.perms or []):
-            return True
-        return code == "tasks" and "courses" in (self.perms or [])
+        acts = self.grants.get(code) or []
+        if action is None:
+            return self.is_assistant and any(a != "view" for a in acts)
+        if action == "view":
+            return bool(acts)
+        return self.is_assistant and action in acts
+
+    def can_view(self, code):
+        return self.can(code, "view")
+
+    def acts(self, code):
+        """Shablon uchun: {"view": bool, "add": bool, "edit": bool, "delete": bool, "use": bool, "any": bool}"""
+        d = {a: self.can(code, a) for a in ("view", "add", "edit", "delete", "use")}
+        d["any"] = d["add"] or d["edit"] or d["delete"] or d["use"]
+        return d
 
 
 class RefreshTokenModel(models.Model):

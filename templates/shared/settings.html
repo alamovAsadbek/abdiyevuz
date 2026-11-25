@@ -1,10 +1,5 @@
 {% extends "base.html" %}{% load ui %}
-{% block title %}Sozlamalar{% if request.user.is_main %}<div class="c p mt"><h3 style="margin-bottom:6px">Umumiy sozlamalar</h3><p class="m" style="margin-bottom:10px">Butun sayt uchun amal qiladi.</p>
-<form method="post" action="{% url 'site_settings' %}">{% csrf_token %}
-{% include "partials/check.html" with name="articles_public" on=site.articles_public title="Maqolalarni login qilmasdan ko‘rish" desc="Yoqilsa, maqolalarni hamma — hatto ro‘yxatdan o‘tmagan mehmonlar ham — ko‘ra oladi" %}
-{% include "partials/check.html" with name="registration_open" on=site.registration_open title="Ro‘yxatdan o‘tish ochiq" desc="O‘chirilsa, yangi foydalanuvchilar o‘zi ro‘yxatdan o‘ta olmaydi" %}
-<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>{% endif %}
-{% endblock %}{% block back %}{% endblock %}{% block h1 %}Sozlamalar{% endblock %}
+{% block title %}Sozlamalar{% endblock %}{% block back %}{% endblock %}{% block h1 %}Sozlamalar{% endblock %}
 {% block content %}
 <div class="c p"><div class="fgrid">
 <div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Mavzu</div>{% include "partials/seg.html" with name="theme" pref="theme" options=theme_opts value="light" %}</div>
@@ -12,4 +7,16 @@
 <div style="grid-column:1/-1"><div class="m" style="margin-bottom:6px">Amallar paneli joyi</div>{% include "partials/seg.html" with name="act" pref="act" options=act_opts value="top" %}
 <button class="bt s mt" data-rail-reset>{% icon 'refresh-cw' %} Panel joyini asl holatga qaytarish</button></div>
 </div></div>
+{% if request.user.is_main %}<div class="c p mt"><h3 style="margin-bottom:6px">Umumiy sozlamalar</h3><p class="m" style="margin-bottom:10px">Butun sayt uchun amal qiladi.</p>
+<form method="post" action="{% url 'site_settings' %}">{% csrf_token %}
+{% include "partials/check.html" with name="articles_public" on=site.articles_public title="Maqolalarni login qilmasdan ko‘rish" desc="Yoqilsa, maqolalarni hamma — hatto ro‘yxatdan o‘tmagan mehmonlar ham — ko‘ra oladi" %}
+{% include "partials/check.html" with name="registration_open" on=site.registration_open title="Ro‘yxatdan o‘tish ochiq" desc="O‘chirilsa, yangi foydalanuvchilar o‘zi ro‘yxatdan o‘ta olmaydi" %}
+<button class="bt mt">{% icon 'save' %} Saqlash</button></form></div>
+
+<div class="c p mt" id="roles"><h3 style="margin-bottom:6px">{% icon 'key' %} Rollar bo‘yicha standart ruxsatlar</h3>
+<p class="m" style="margin-bottom:12px">Shaxsiy ruxsat berilmagan barcha foydalanuvchilarga shu rol standarti qo‘llanadi. Alohida foydalanuvchiga boshqacha ruxsat berish uchun: Foydalanuvchilar → foydalanuvchi → «Ruxsatlar».</p>
+<div class="tabs c">{% for k, n in role_tabs %}<a class="{% if k == role_tab %}on{% endif %}" href="?role={{ k }}#roles">{{ n }}</a>{% endfor %}</div>
+<form method="post" action="{% url 'role_perms' %}">{% csrf_token %}<input type="hidden" name="role" value="{{ role_tab }}">
+{% include "partials/perm_matrix.html" with rows=role_rows %}
+<div class="row mt"><button class="bt">{% icon 'save' %} Standartni saqlash</button><button type="button" class="bt s" data-post="{% url 'role_perms' %}" data-fields='{"role": "{{ role_tab }}", "reset": "1"}' data-confirm="Bu rol uchun dastlabki (tizim) standarti tiklansinmi?">{% icon 'rotate-ccw' %} Tizim standartini tiklash</button></div></form></div>{% endif %}
 {% endblock %}

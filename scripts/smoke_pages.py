@@ -19,7 +19,7 @@ def hit(c, path, who, ok=(200,)):
 
 lesson = LessonModel.objects.filter(module__course__title="Kimyo asoslari").first()
 glesson = LessonModel.objects.filter(module__course__group__isnull=False).first()
-common = ["/", "/login/", "/register/", "/courses/", "/tests/", "/dashboard/", "/profile/", "/settings/", "/stats/", "/stats/?tab=1", "/stats/?tab=2", "/stats/?tab=3",
+common = ["/", "/login/", "/register/", "/courses/", "/tests/", "/dashboard/", "/profile/", "/settings/", "/stats/", "/stats/?tab=usr", "/stats/?tab=tst", "/stats/?tab=tsk",
  "/groups/", "/guides/", "/tasks/", "/notifications/", "/notifications/?mode=table"]
 t = TestModel.objects.get(title="Oksidlar"); tf = TestModel.objects.get(mode="file"); g = GroupModel.objects.first()
 c1 = CourseModel.objects.get(title="Kimyo asoslari"); mod = c1.modules.first(); task = TaskModel.objects.first(); sub = SubmissionModel.objects.first()

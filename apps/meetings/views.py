@@ -20,7 +20,7 @@ ACT_ICONS = {"start": "play", "end": "end", "kick": "chiqarildi", "invite": "tak
 
 
 def can_create(u):
-    return u.is_authenticated and u.is_teacher and u.can("meetings")
+    return u.is_authenticated and u.is_teacher and u.can("meetings", "add")
 
 
 def _get(request, pk):
@@ -37,7 +37,7 @@ def _when(m):
 
 
 def _candidates(user, meeting):
-    qs = UserModel.objects.filter(is_active=True, is_blocked=False).exclude(pk=meeting.host_id)
+    qs = UserModel.objects.on_site().filter(is_active=True, is_blocked=False).exclude(pk=meeting.host_id)
     if user.is_assistant:
         qs = qs.filter(pk__in=scoped_students(user).values_list("pk", flat=True))
     return qs.order_by("full_name")
@@ -213,7 +213,7 @@ def meeting_detail(request, pk):
         have = set(MeetingMemberModel.objects.filter(meeting=m, invited=True).values_list("user_id", flat=True))
         ctx["invite_json"] = _picker_json(_candidates(u, m), have)
     if owner and not m.is_ended:
-        ass = UserModel.objects.filter(role="assistant", is_active=True, is_blocked=False).exclude(pk=m.host_id)
+        ass = UserModel.objects.on_site().filter(role="assistant", is_active=True, is_blocked=False).exclude(pk=m.host_id)
         have = set(MeetingMemberModel.objects.filter(meeting=m, role="cohost").values_list("user_id", flat=True))
         ctx["cohost_json"] = _picker_json(ass, have)
     ctx.update(_history(m, u, mod, owner, request))
@@ -297,7 +297,7 @@ def meeting_cohost_add(request, pk):
         return JsonResponse({"ok": False, "error": "Ruxsat yo‘q"}, status=403)
     ids = [to_int(x) for x in jload(request.body, {}).get("uids", [])]
     n = 0
-    for u in UserModel.objects.filter(pk__in=ids, role="assistant", is_active=True, is_blocked=False).exclude(pk=m.host_id):
+    for u in UserModel.objects.on_site().filter(pk__in=ids, role="assistant", is_active=True, is_blocked=False).exclude(pk=m.host_id):
         x, _ = MeetingMemberModel.objects.get_or_create(meeting=m, user=u, defaults={"invited": True})
         x.role, x.invited, x.banned = "cohost", True, False
         x.mperms = x.mperms or ["kick", "mute", "comments", "invite"]

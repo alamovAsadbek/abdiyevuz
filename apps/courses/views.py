@@ -17,7 +17,9 @@ from apps.core.validators import DOC_EXT, VIDEO_EXT, VIEW_EXT, check_upload
 from . import video
 from .models import (CourseAccessModel, CourseModel, GuideFileModel, GuideModel, LessonMaterialModel, LessonModel,
                      LessonProgressModel, ModuleModel, SubmissionModel, TaskModel)
-from .services import (student_open_tasks, can_access, completed_count, enrolled, lesson_done, lock_reason, my_course_ids, scoped_students, visible_courses)
+from apps.accounts.models import UserModel
+from .services import (student_open_tasks, can_access, completed_count, enrolled, has_access_row, lesson_done, lock_reason, my_course_ids,
+                       scoped_students, visible_courses)
 
 BUILTIN = [("pt", "Mendeleyev davriy jadvali", "Jadval", "118 ta element, kategoriyalar bo‘yicha rangli"),
            ("sol", "Moddalarning suvda eruvchanligi", "Jadval", "Kislota, asos va tuzlar jadvali"),
@@ -27,8 +29,14 @@ BUILTIN = [("pt", "Mendeleyev davriy jadvali", "Jadval", "118 ta element, katego
            ("ind", "Indikatorlar rangi", "Amaliy", "Kislotali, neytral va ishqoriy muhit")]
 
 
-def can_manage_lessons(user, course):
-    return user.is_authenticated and user.is_teacher and user.can("groups" if course.is_hidden else "courses")
+def lesson_section(course):
+    return "groups" if course.is_hidden else "courses"
+
+
+def can_manage_lessons(user, course, action=None):
+    """Dars/qo'llanma boshqaruvi: guruh kursi — «Guruhlar», oddiy kurs — «Kurslar» bo'limi ruxsati.
+    action: add / edit / delete (None — biror yozish amali)."""
+    return user.is_authenticated and user.is_teacher and user.can(lesson_section(course), action)
 
 
 def lesson_rows(user, module):
@@ -106,19 +114,21 @@ def apply_video(lesson, vd):
 def courses(request):
     u = request.user
     teacher = u.is_authenticated and u.is_teacher
+    P = u.acts("courses") if teacher else {}
     rows = []
     for c in visible_courses(u).prefetch_related("modules"):
         paid = c.is_paid
         price = ("dan " if c.is_modular and paid else "") + ("%s so‘m" % f"{c.min_price():,}".replace(",", " ") if paid else "Bepul")
         pt = T(price, "x" if paid else "f")
         acts = []
-        if u.is_authenticated and u.is_teacher and u.can("courses"):
-            acts = [A("edit-2", "Sozlamalar", url=reverse("course_detail", args=[c.pk]) + "?tab=set"),
-                    A("trash-2", "O‘chirish", post=reverse("course_delete", args=[c.pk]), confirm="Kurs o‘chirilsinmi?", cls="x")]
+        if P.get("edit"):
+            acts.append(A("edit-2", "Sozlamalar", url=reverse("course_detail", args=[c.pk]) + "?tab=set"))
+        if P.get("delete"):
+            acts.append(A("trash-2", "O‘chirish", post=reverse("course_delete", args=[c.pk]), confirm="Kurs o‘chirilsinmi?", cls="x"))
         rows.append({"title": c.title, "sub": ("Modulli" if c.is_modular else "Modulsiz") + " kurs", "url": reverse("course_detail", args=[c.pk]), "tags": [pt],
                      "cells": [c.title, T("Modulli" if c.is_modular else "Modulsiz"), c.modules.count(), c.lesson_count, "Ketma-ket" if c.sequential else "Ixtiyoriy", pt],
                      "actions": acts, "f": {"ty": "Modulli" if c.is_modular else "Modulsiz", "pr": "Pullik" if paid else "Bepul", "sq": "Ketma-ket" if c.sequential else "Ixtiyoriy"}})
-    add = [{"icon": "plus", "label": "Yangi kurs", "url": reverse("course_new")}] if teacher and u.can("courses") else None
+    add = [{"icon": "plus", "label": "Yangi kurs", "url": reverse("course_new")}] if P.get("add") else None
     return render(request, "shared/courses/list.html", {"L": make_list(request, rows, ["Kurs nomi", "Turi", "Modullar", "Darslar", "Tartib", "Narx"],
                   [("ty", "Turi", ["Modulli", "Modulsiz"]), ("pr", "Narx", ["Bepul", "Pullik"]), ("sq", "Tartib", ["Ketma-ket", "Ixtiyoriy"])], add)})
 
@@ -151,23 +161,75 @@ def _course(request, pk):
     return c
 
 
+def _price_label(c):
+    if not c.is_paid:
+        return "Bepul"
+    return ("dan " if c.is_modular else "") + f"{c.min_price():,}".replace(",", " ") + " so‘m"
+
+
+def course_info(c, lessons):
+    """Kurs bo'yicha umumiy raqamlar (kurs sahifasining yuqori qismi uchun)."""
+    lids = [l.pk for l in lessons]
+    return {"n_mod": c.modules.count(), "n_les": len(lessons), "dur": sum(l.duration for l in lessons),
+            "n_task": TaskModel.objects.filter(lesson_id__in=lids, is_active=True).count(),
+            "n_mat": LessonMaterialModel.objects.filter(lesson_id__in=lids).count(),
+            "n_video": sum(1 for l in lessons if l.video_kind != "none"),
+            "views": sum(l.views for l in lessons),
+            "n_stu": CourseAccessModel.objects.filter(course=c, user__show_on_site=True).values("user").distinct().count()}
+
+
 def course_detail(request, pk):
     c = _course(request, pk)
     u = request.user
-    mg = u.is_authenticated and u.is_teacher and u.can("courses")
-    keys = ["mod" if c.is_modular else "les"] + (["set", "stu", "his"] if mg else [])
-    tab = request.GET.get("tab") if request.GET.get("tab") in keys else keys[0]
-    ctx = {"c": c, "mg": mg, "tabs": [(keys[0], "Modullar" if c.is_modular else "Darslar")] + ([("set", "Sozlamalar"), ("stu", "Talabalar"), ("his", "Tarix")] if mg else []), "tab": tab}
+    staff = u.is_authenticated and u.is_teacher
+    perm = u.acts("courses") if staff else {}
+    mg = bool(perm.get("any"))
+    first = "mod" if c.is_modular else "les"
+    names = {"mod": "Modullar", "les": "Darslar", "about": "Kurs haqida", "set": "Sozlamalar", "stu": "Talabalar", "his": "Tarix"}
+    hints = {"mod": "Kursdagi modullar va ulardagi darslar", "les": "Kursdagi video darslar ro‘yxati",
+             "about": "Kurs tavsifi, tarkibi va narxi", "set": "Kurs nomi, tavsifi, narxi va tartibini o‘zgartirish",
+             "stu": "Kurs ochilgan talabalar va ularning jarayoni", "his": "Kurs bo‘yicha barcha amallar tarixi"}
+    keys = [first, "about"] + (["set"] if perm.get("edit") or perm.get("delete") else []) + (["stu", "his"] if staff else [])
+    tab = request.GET.get("tab") if request.GET.get("tab") in keys else first
+    lessons = list(LessonModel.objects.filter(module__course=c).order_by("module__order", "module_id", "order", "id"))
+    info = course_info(c, lessons)
+    ctx = {"c": c, "mg": mg, "perm": perm, "staff": staff, "info": info, "price_label": _price_label(c),
+           "tabs": [(k, names[k]) for k in keys], "tab_hints": hints, "tab": tab,
+           "first_lesson": lessons[0] if lessons else None,
+           "teacher": UserModel.objects.on_site().filter(role="main").first()}
+    module = c.first_module() if not c.is_modular else None
+    ctx["module"] = module
+    # Talaba (yoki mehmon) uchun kirish va jarayon
+    if c.is_modular:
+        ctx["has_access"] = any(can_access(u, c, m) for m in c.modules.filter(is_active=True)) if not staff else True
+    else:
+        ctx["has_access"] = can_access(u, c, module)
+    ctx["can_buy"] = bool(u.is_authenticated and u.is_student and not c.is_modular and c.price > 0 and not ctx["has_access"])
+    if u.is_authenticated and u.is_student:
+        done, tot = completed_count(u, c)
+        last = LessonProgressModel.objects.filter(user=u, lesson__module__course=c).select_related("lesson").order_by("-last_seen").first()
+        pct = round(done / tot * 100) if tot else 0
+        ctx["progress"] = {"done": done, "tot": tot, "pct": pct, "off": round(113 - 1.13 * pct, 1), "last": last.lesson if last else None}
     if tab == "mod":
-        mods = c.modules.all() if mg else c.modules.filter(is_active=True)
-        ctx["mods"] = [{"m": m, "n": m.lessons.count(), "ok": can_access(u, c, m)} for m in mods]
+        mods = c.modules.all() if staff else c.modules.filter(is_active=True)
+        seen = set(LessonProgressModel.objects.filter(user=u, lesson__module__course=c).values_list("lesson_id", flat=True)) if u.is_authenticated and u.is_student else set()
+        rows = []
+        for m in mods.prefetch_related("lessons"):
+            ls = list(m.lessons.all())
+            rows.append({"m": m, "n": len(ls), "ok": can_access(u, c, m), "lessons": ls[:4], "dur": sum(x.duration for x in ls),
+                         "pct": round(sum(1 for x in ls if x.pk in seen) / len(ls) * 100) if ls and seen else 0,
+                         "own": u.is_authenticated and u.is_student and has_access_row(u, c, m)})
+        ctx["mods"] = rows
     elif tab == "les":
-        m = c.first_module()
-        ctx.update(module=m, rows=lesson_rows(u, m), ok=can_access(u, c, m), can_buy=u.is_authenticated and u.is_student and c.price > 0 and not can_access(u, c, m))
+        ctx.update(rows=lesson_rows(u, module), ok=ctx["has_access"])
     elif tab == "stu":
         ids = list(CourseAccessModel.objects.filter(course=c).values_list("user_id", flat=True))
-        ctx["students"] = [{"u": s, "mods": [a.module.title if a.module else "Barcha modullar" for a in CourseAccessModel.objects.filter(user=s, course=c).select_related("module")],
-                            "n": completed_count(s, c)[0]} for s in scoped_students(u).filter(pk__in=ids)]
+        rows = []
+        for s in scoped_students(u).filter(pk__in=ids):
+            done, tot = completed_count(s, c)
+            rows.append({"u": s, "n": done, "pct": round(done / tot * 100) if tot else 0,
+                         "mods": [a.module.title if a.module else "Barcha modullar" for a in CourseAccessModel.objects.filter(user=s, course=c).select_related("module")]})
+        ctx["students"] = rows
     elif tab == "his":
         ctx["events"] = EventModel.objects.filter(course=c).select_related("user", "actor")[:100]
     return render(request, "shared/courses/detail.html", ctx)
@@ -221,7 +283,11 @@ def module_detail(request, pk):
     m = _module(request, pk)
     c, u = m.course, request.user
     ok = can_access(u, c, m)
-    return render(request, "shared/courses/module.html", {"m": m, "c": c, "rows": lesson_rows(u, m), "ok": ok, "mg": u.is_authenticated and u.is_teacher and u.can("courses"),
+    perm = u.acts("courses") if u.is_authenticated and u.is_teacher else {}
+    ls = list(m.lessons.all())
+    return render(request, "shared/courses/module.html", {"m": m, "c": c, "rows": lesson_rows(u, m), "ok": ok, "mg": bool(perm.get("any")), "perm": perm,
+                                                         "n_les": len(ls), "dur": sum(x.duration for x in ls),
+                                                         "n_task": TaskModel.objects.filter(lesson__in=ls, is_active=True).count(),
                                                          "can_buy": u.is_authenticated and u.is_student and m.price > 0 and not ok})
 
 
@@ -276,11 +342,13 @@ def lesson_detail(request, pk):
     if msg:
         return render(request, "shared/lesson/locked.html", {"l": l, "msg": msg, "back": back})
     mg = can_manage_lessons(u, c)
+    lp = u.acts(lesson_section(c)) if u.is_authenticated and u.is_teacher else {}
     keys = ["video", "mat", "task"] + (["stu"] if u.is_authenticated and u.is_teacher else []) + (["set"] if mg else []) + ["info"]
     names = {"video": "Video", "mat": "Qo‘llanma", "task": "Vazifalar", "stu": "O‘quvchilar", "set": "Sozlamalar", "info": "Kurs haqida"}
     tab = request.GET.get("tab") if request.GET.get("tab") in keys else "video"
-    ctx = {"l": l, "c": c, "m": m, "back": back, "mg": mg, "tabs": [(k, names[k]) for k in keys], "tab": tab,
-           "can_tasks": u.is_authenticated and u.is_teacher and u.can("tasks"), "my_views": 0}
+    ctx = {"l": l, "c": c, "m": m, "back": back, "mg": mg, "lp": lp, "tabs": [(k, names[k]) for k in keys], "tab": tab,
+           "can_tasks": u.is_authenticated and u.is_teacher and u.can("tasks", "add"),
+           "see_tasks": u.is_authenticated and u.is_teacher and u.can_view("tasks"), "my_views": 0}
     if u.is_authenticated and u.is_student and tab == "video":
         p, created = LessonProgressModel.objects.get_or_create(user=u, lesson=l)
         if not created and request.method == "GET" and not request.GET.get("noc"):
@@ -308,8 +376,7 @@ def lesson_detail(request, pk):
                             "tasks": [(t, SubmissionModel.objects.filter(task=t, student=s).first()) for t in l.tasks.all()]} for s in en]
         ctx["n_seen"] = LessonProgressModel.objects.filter(user__in=en, lesson=l).count()
     elif tab == "info":
-        from apps.accounts.models import UserModel
-        ctx.update(teacher=UserModel.objects.filter(role="main").first(), total=LessonModel.objects.filter(module__course=c).count(),
+        ctx.update(teacher=UserModel.objects.on_site().filter(role="main").first(), total=LessonModel.objects.filter(module__course=c).count(),
                    pct=round(completed_count(u, c)[0] / max(1, LessonModel.objects.filter(module__course=c).count()) * 100) if u.is_authenticated and u.is_student else None)
     return render(request, "shared/lesson/detail.html", ctx)
 
@@ -317,7 +384,7 @@ def lesson_detail(request, pk):
 def _lesson_form(request, module=None, lesson=None):
     m = module or lesson.module
     c = m.course
-    if not can_manage_lessons(request.user, c):
+    if not can_manage_lessons(request.user, c, "edit" if lesson else "add"):
         return deny(request)
     if request.method == "POST":
         t = request.POST.get("title", "").strip()
@@ -350,7 +417,7 @@ def lesson_edit(request, pk):
 @post_only
 def lesson_delete(request, pk):
     l = _lesson(request, pk)
-    if not can_manage_lessons(request.user, l.module.course):
+    if not can_manage_lessons(request.user, l.module.course, "delete"):
         return deny(request)
     m = l.module
     import shutil
@@ -364,7 +431,7 @@ def lesson_delete(request, pk):
 @login_required
 def material_new(request, pk):
     l = _lesson(request, pk)
-    if not can_manage_lessons(request.user, l.module.course):
+    if not can_manage_lessons(request.user, l.module.course, "edit"):
         return deny(request)
     if request.method == "POST":
         t, url, f = request.POST.get("title", "").strip(), request.POST.get("url", "").strip(), request.FILES.get("file")
@@ -396,7 +463,7 @@ def material_new(request, pk):
 @post_only
 def material_delete(request, pk):
     mt = get_object_or_404(LessonMaterialModel, pk=pk)
-    if not can_manage_lessons(request.user, mt.lesson.module.course):
+    if not can_manage_lessons(request.user, mt.lesson.module.course, "edit"):
         return deny(request)
     lid = mt.lesson_id
     mt.file.delete(save=False) if mt.file else None
@@ -453,19 +520,21 @@ def guides(request):
     ensure_builtin()
     u = request.user
     mg = u.is_teacher and u.can("guides")
+    P = u.acts("guides") if u.is_teacher else {}
     rows = []
     for g in GuideModel.objects.all():
         if not g.is_active and not mg:
             continue
         st = T("Aktiv", "f") if g.is_active else T("Noaktiv", "x")
         acts = []
-        if mg:
-            acts = [A("pause" if g.is_active else "play", "Aktiv/Noaktiv", post=reverse("guide_toggle", args=[g.pk]), confirm="Qo‘llanma holati o‘zgartirilsinmi?"),
-                    A("trash-2", "O‘chirish", post=reverse("guide_delete", args=[g.pk]), confirm="Qo‘llanma o‘chirilsinmi?", cls="x")]
+        if P.get("edit"):
+            acts.append(A("pause" if g.is_active else "play", "Aktiv/Noaktiv", post=reverse("guide_toggle", args=[g.pk]), confirm="Qo‘llanma holati o‘zgartirilsinmi?"))
+        if P.get("delete"):
+            acts.append(A("trash-2", "O‘chirish", post=reverse("guide_delete", args=[g.pk]), confirm="Qo‘llanma o‘chirilsinmi?", cls="x"))
         typ = "Standart" if g.builtin_key else "O‘qituvchi qo‘shgan"
         rows.append({"title": g.title, "sub": g.summary or (("Qo‘shgan: " + g.author.full_name) if g.author else ""), "url": reverse("guide_detail", args=[g.pk]),
                      "tags": [T(g.category), st], "cells": [g.title, T(g.category), typ, st], "actions": acts, "f": {"cat": g.category, "st": "Aktiv" if g.is_active else "Noaktiv"}})
-    add = [{"icon": "plus", "label": "Qo‘llanma qo‘shish", "url": reverse("guide_new")}] if mg else None
+    add = [{"icon": "plus", "label": "Qo‘llanma qo‘shish", "url": reverse("guide_new")}] if P.get("add") else None
     flt = [("cat", "Kategoriya", GuideModel.CATS)] + ([("st", "Status", ["Aktiv", "Noaktiv"])] if mg else [])
     return render(request, "shared/guides/list.html", {"L": make_list(request, rows, ["Nomi", "Kategoriya", "Turi", "Status"], flt, add)})
 

@@ -10,6 +10,7 @@ urlpatterns = [
     path("auth/ping/", v.ping, name="ping"),
     path("profile/", v.profile, name="profile"),
     path("settings/", v.settings_view, name="settings"),
+    path("settings/roles/", v.role_perms, name="role_perms"),
     path("dashboard/", g.dashboard, name="dashboard"),
     path("stats/", g.stats, name="stats"),
     path("staff/users/", v.users, name="users"),

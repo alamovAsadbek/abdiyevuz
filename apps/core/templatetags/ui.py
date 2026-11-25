@@ -123,7 +123,17 @@ def split(s, sep=","):
 
 @register.filter
 def can(user, code):
-    return bool(user.is_authenticated and user.is_teacher and user.can(code))
+    """{{ user|can:'courses' }} — biror yozish amali; {{ user|can:'courses.add' }} — aniq amal."""
+    if not (user.is_authenticated and user.is_teacher):
+        return False
+    sec, _, act = str(code).partition(".")
+    return bool(user.can(sec, act or None))
+
+
+@register.filter
+def sees(user, code):
+    """{{ user|sees:'tasks' }} — bo'lim foydalanuvchiga ko'rinadimi (mehmon — True)."""
+    return bool(not user.is_authenticated or user.can_view(code))
 
 
 @register.filter

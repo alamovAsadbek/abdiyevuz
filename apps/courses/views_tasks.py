@@ -123,8 +123,9 @@ def tasks(request):
         L = make_list(request, rows, ["Vazifa", "Kurs / dars", "Eng yuqori ball", "Muddat", "Holat", "Mening ballim"],
                       [("st", "Holat", ["Topshirilmagan", "Tekshirilmoqda", "Qabul qilindi", "Qayta topshiring", "Muddati o‘tgan"])], show_mode=False)
         return render(request, "student/tasks.html", {"L": L})
-    if not u.can("tasks"):
+    if not u.can_view("tasks"):
         return deny(request)
+    can_del = u.can("tasks", "delete")
     for t in TaskModel.objects.select_related("lesson__module__course").order_by("-id"):
         en = enrolled(t.lesson, u)
         if u.is_assistant and not en.exists():
@@ -134,13 +135,13 @@ def tasks(request):
         h = "Tekshirilmagan bor" if pend else "Hammasi tekshirilgan" if sb.exists() else "Hech kim topshirmagan"
         tt = T(h, "x" if pend else "f" if sb.exists() else "")
         st = T("Yopilgan", "x") if not t.is_open else T("Ochiq", "f")
-        acts = [A("trash-2", "O‘chirish", post=reverse("task_delete", args=[t.pk]), confirm="Vazifa o‘chirilsinmi?", cls="x")] if True else []
+        acts = [A("trash-2", "O‘chirish", post=reverse("task_delete", args=[t.pk]), confirm="Vazifa o‘chirilsinmi?", cls="x")] if can_del else []
         rows.append({"title": t.title, "sub": t.lesson.title, "url": reverse("task_detail", args=[t.pk]), "tags": [tt, st],
                      "cells": [t.title, f"{t.lesson.module.course.title} · {t.lesson.module.title}", t.lesson.title, f"{t.max_score} ball", t.deadline or "—", f"{sb.count()} / {max(en.count(), sb.count())}", tt],
                      "actions": acts, "f": {"crs": t.lesson.module.course.title, "hl": h}})
     L = make_list(request, rows, ["Vazifa", "Kurs / modul", "Dars", "Ball", "Muddat", "Topshirgan", "Holat"],
                   [("crs", "Kurs", [c.title for c in CourseModel.objects.all()]), ("hl", "Holat", ["Tekshirilmagan bor", "Hammasi tekshirilgan", "Hech kim topshirmagan"])],
-                  [{"icon": "plus", "label": "Vazifa qo‘shish", "url": reverse("task_new_global")}])
+                  [{"icon": "plus", "label": "Vazifa qo‘shish", "url": reverse("task_new_global")}] if u.can("tasks", "add") else None)
     return render(request, "staff/tasks/list.html", {"L": L})
 
 
@@ -155,7 +156,10 @@ def task_detail(request, pk):
     non = [x for x in en if x.pk not in subs]
     ctx = {"t": t, "tab": tab if tab in ("sub", "non", "info", "set") else "sub", "sub": sub, "non": non, "n": len(en),
            "pending": sum(1 for x in sub if x["s"].status == "pending"), "ok": sum(1 for x in sub if x["s"].status == "accepted"),
-           "tabs": [("sub", "Topshirganlar"), ("non", "Topshirmaganlar"), ("info", "Ma‘lumot"), ("set", "Sozlamalar")]}
+           "perm": u.acts("tasks"),
+           "tabs": [("sub", "Topshirganlar"), ("non", "Topshirmaganlar"), ("info", "Ma‘lumot")] + ([("set", "Sozlamalar")] if u.can("tasks", "edit") or u.can("tasks", "delete") else [])}
+    if ctx["tab"] == "set" and len(ctx["tabs"]) < 4:
+        ctx["tab"] = "sub"
     return render(request, "staff/tasks/detail.html", ctx)
 
 

@@ -44,7 +44,7 @@ def send_sms(phone, text):
 def recipients(audience, author, groups=(), users=()):
     from apps.courses.services import my_groups
     from apps.accounts.models import GroupModel
-    base = UserModel.objects.exclude(pk=author.pk).filter(is_active=True)
+    base = UserModel.objects.on_site().exclude(pk=author.pk).filter(is_active=True)
     st = base.filter(role="student")
     if audience == "all": return base
     if audience == "students": return st

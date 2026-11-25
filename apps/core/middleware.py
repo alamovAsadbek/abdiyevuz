@@ -64,3 +64,30 @@ class SecurityHeadersMiddleware:
         if getattr(request, "user", None) is not None and request.user.is_authenticated:
             r.setdefault("Cache-Control", "no-store, private")
         return r
+
+
+class SectionAccessMiddleware:
+    """Har bir so'rovda url nomi bo'yicha bo'lim × amal ruxsatini tekshiradi (asosiy o'qituvchi va mehmonlar bundan mustasno).
+    «Ko'rish» berilmagan bo'lim sahifalari ochilmaydi; yozish amallari faqat berilgan bo'lsa bajariladi."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        u = getattr(request, "user", None)
+        if not (u and u.is_authenticated) or u.is_main:
+            return None
+        from apps.accounts.permissions import route_need
+        need = route_need(getattr(request.resolver_match, "url_name", "") or "", request.method)
+        if not need or not need[0]:
+            return None
+        sec, act = need
+        if u.is_student and act != "view":
+            return None  # talaba yozish amallari view'larning o'zida rol bo'yicha tekshiriladi
+        if not u.can(sec, act):
+            from .perms import deny
+            return deny(request, "Sizda bu amal uchun ruxsat yo‘q" if act != "view" else "Bu bo‘lim siz uchun yopiq")
+        return None
